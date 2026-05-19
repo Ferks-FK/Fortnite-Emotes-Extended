@@ -19,6 +19,7 @@ This plugin allows players to use Emotes & Dances Fortnite do with all the priva
 V2.0.0 (19/05/2026)
 
 - Removed dependencies of “LiquidHelpers” and “AutoExecConfig” includes.
+- Fixed a bug where taking control of a BOT that was dancing (`sm_danceall`) would leave the player frozen and unable to move.
 
 v1.9.0 (11/05/2026)
 

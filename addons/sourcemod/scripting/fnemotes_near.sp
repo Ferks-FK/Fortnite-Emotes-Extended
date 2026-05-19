@@ -370,6 +370,7 @@ void Event_BotReplacePlayer(Event event, const char[] name, bool dontBroadcast)
 {
     int player = GetClientOfUserId(event.GetInt("player"));
     int bot    = GetClientOfUserId(event.GetInt("bot"));
+
     StopEmote(player);
     StopEmote(bot);
 
@@ -400,7 +401,10 @@ void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 void Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(event.GetInt("userid"));
+
     StopEmote(client);
+
+    CreateTimer(0.1, Timer_ResetMovetype, client);
 }
 
 void Event_Start(Event event, const char[] name, bool dontBroadcast)
@@ -434,6 +438,14 @@ public Action BotTaunt(Handle timer, int client)
         return Plugin_Continue;
     RandomDance(client);
     return Plugin_Continue;
+}
+
+public Action Timer_ResetMovetype(Handle timer, any client)
+{
+    if (IsValidClient(client) && IsPlayerAlive(client))
+        SetEntityMoveType(client, MOVETYPE_WALK);
+        
+    return Plugin_Stop;
 }
 
 // ============================================================
