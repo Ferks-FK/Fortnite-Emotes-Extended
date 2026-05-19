@@ -16,15 +16,15 @@ This plugin allows players to use Emotes & Dances Fortnite do with all the priva
 
 ## Changelog
 
-- V2.0.0 (19/05/2026)
+V2.0.0 (19/05/2026)
 
-. Removed dependencies of “LiquidHelpers” and “AutoExecConfig” includes.
+- Removed dependencies of “LiquidHelpers” and “AutoExecConfig” includes.
 
-- v1.9.0 (11/05/2026)
+v1.9.0 (11/05/2026)
 
-. The way emotes/dances, sound precaching, and menu usage have been completely revamped, instead of checking each sound or each emote/dance individually, simply loop through their respective arrays.
-. Removed the emote IDs from the translations; now the plugin automatically adds them based on the emote/dance index in the array.
-. Removed unused parameter of the music loop.
-. Support for more than one sound per emote/dance (Hack for the “ninja_dance_01” and “dance_soldier_03” sounds has been removed).
-. Fixed a server crash that occurred when interacting with the menus.
-. Added the dance “California Girls” with a Spanish-language audio version.
+- The way emotes/dances, sound precaching, and menu usage have been completely revamped, instead of checking each sound or each emote/dance individually, simply loop through their respective arrays.
+- Removed the emote IDs from the translations; now the plugin automatically adds them based on the emote/dance index in the array.
+- Removed unused parameter of the music loop.
+- Support for more than one sound per emote/dance (Hack for the “ninja_dance_01” and “dance_soldier_03” sounds has been removed).
+- Fixed a server crash that occurred when interacting with the menus.
+- Added the dance “California Girls” with a Spanish-language audio version.
