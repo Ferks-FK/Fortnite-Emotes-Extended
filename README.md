@@ -2,6 +2,10 @@
 
 This plugin allows players to use Emotes & Dances Fortnite do with all the private emotes included.
 
+> [!IMPORTANT]  
+> The modifications in this plugin are based on [this](https://forums.alliedmods.net/showpost.php?p=2836162&postcount=276) version, which is specifically designed for L4D1/2.
+It will likely work in other games, but I can't guarantee that.
+
 **Original Version:** https://forums.alliedmods.net/showthread.php?t=318981
 
 ## Commands
@@ -11,8 +15,8 @@ This plugin allows players to use Emotes & Dances Fortnite do with all the priva
 - **`sm_doemote`** - Permform a specific dance/emote.
 - **`sm_dodance`** - Permform a specific dance/emote.
 - **`sm_danceall`** - Force all players to dance. ***(ADMIN COMMAND)***
-- **`sm_setemotes <#userid|name> [Emote ID]`** - Emote ID from 1 to 84 ***(ADMIN COMMAND)***;
-- **`sm_setdances <#userid|name> [Emote ID]`** - Emote ID from 1 to 84 ***(ADMIN COMMAND)***;
+- **`sm_setemotes <#userid|name> [Emote ID]`** - Emote ID ***(ADMIN COMMAND)***;
+- **`sm_setdances <#userid|name> [Emote ID]`** - Emote ID ***(ADMIN COMMAND)***;
 
 ## Changelog
 
