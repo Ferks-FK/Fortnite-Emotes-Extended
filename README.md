@@ -22,7 +22,7 @@ It will likely work in other games, but I can't guarantee that.
 
 V2.1.0 (01/06/2026)
 
-- Fix the issue where the disabled bot dies when switching teams.
+- Fix the issue where the incapacitated bot dies when switching teams.
 
 V2.0.0 (19/05/2026)
 
