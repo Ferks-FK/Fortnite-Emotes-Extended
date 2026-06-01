@@ -211,7 +211,7 @@ public Plugin myinfo =
     name = "[L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.0.0",
+    version = "2.1.0",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
 
@@ -376,8 +376,7 @@ void Event_BotReplacePlayer(Event event, const char[] name, bool dontBroadcast)
 
     SetEntityMoveType(player, MOVETYPE_WALK);
 
-    bool isHanging = GetEntProp(bot, Prop_Send, "m_isHangingFromLedge") == 1;
-    if (!isHanging)
+    if (!bIsPlayerIncapped(bot))
         SetEntityMoveType(bot, MOVETYPE_WALK);
 }
 
@@ -442,7 +441,7 @@ public Action BotTaunt(Handle timer, int client)
 
 public Action Timer_ResetMovetype(Handle timer, any client)
 {
-    if (IsValidClient(client) && IsPlayerAlive(client))
+    if (IsValidClient(client) && IsPlayerAlive(client) && !bIsPlayerIncapped(client))
         SetEntityMoveType(client, MOVETYPE_WALK);
         
     return Plugin_Stop;
@@ -1351,7 +1350,7 @@ int GetEmotePeople()
 
 stock bool bIsPlayerIncapped(int client)
 {
-    return view_as<bool>(GetEntProp(client, Prop_Send, "m_isIncapacitated", 1));
+    return view_as<bool>(GetEntProp(client, Prop_Send, "m_isIncapacitated", 1)) || view_as<bool>(GetEntProp(client, Prop_Send, "m_isHangingFromLedge", 1));
 }
 
 stock bool IsValidClient(int client, bool replaycheck = true)

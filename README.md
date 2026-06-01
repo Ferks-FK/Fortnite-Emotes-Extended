@@ -16,6 +16,10 @@ This plugin allows players to use Emotes & Dances Fortnite do with all the priva
 
 ## Changelog
 
+V2.1.0 (01/06/2026)
+
+- Fix the issue where the disabled bot dies when switching teams.
+
 V2.0.0 (19/05/2026)
 
 - Removed dependencies of “LiquidHelpers” and “AutoExecConfig” includes.
