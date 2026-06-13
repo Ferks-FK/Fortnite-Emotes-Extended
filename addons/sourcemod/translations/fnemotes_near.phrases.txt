@@ -638,6 +638,10 @@
 	{
 		"en"			"Thanos Twerk"	
 	}
+	"Emote_DrLivesey_Walk"
+	{
+		"en"			"Dr. Livesey Walk"	
+	}
 	"Emote_Gangnam_Style"
 	{
 		"en"			"Gangnam Style"

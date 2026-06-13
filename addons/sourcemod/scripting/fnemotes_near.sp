@@ -19,6 +19,10 @@
 #define SOUND_BASE_PATH "kodua/fortnite_emotes/"
 #define SOUND_BASE_FULL "sound/kodua/fortnite_emotes/"
 
+#define FILE_MODEL_PATH "models/player/kodua/fnemotes_nearlycivilized_v2.mdl"
+#define FILE_MODEL_PATH_VDD "models/player/kodua/fnemotes_nearlycivilized_v2.vvd"
+#define FILE_MODEL_PATH_VTX "models/player/kodua/fnemotes_nearlycivilized_v2.dx90.vtx"
+
 enum L4DTeam
 {
 	L4DTeam_Unassigned  = 0,
@@ -130,6 +134,7 @@ static const EmoteData g_Dances[] =
     { "Emote_Friday13",                 "Emote_Friday13",                   "none",                    "california_girls"                   },
     { "Emote_Friday13_ES",              "Emote_Friday13",                   "none",                    "california_girls_es"                },
     { "Emote_Thanos_Twerk",             "Emote_Thanos_Twerk",               "none",                    "thanos_twerk"                       },
+    { "Emote_DrLivesey_Walk",           "Emote_DrLivesey_Walk",             "none",                    "dr_livesey_walk_1,dr_livesey_walk_2"},
     { "Emote_Gangnam_Style",            "Emote_Gangnam_Style",              "none",                    "psychic"                            },
     { "Emote_InDaGhetto",               "Emote_InDaGhetto",                 "none",                    "emote_vivid"                        },
     { "Emote_BlindingLights",           "Emote_BlindingLights",             "none",                    "emote_autumn_tea"                   },
@@ -169,7 +174,7 @@ static const EmoteData g_Dances[] =
 // Sets the total number of emotes and dances.
 // Setting any of these incorrectly will cause the server to crash.
 #define EMOTES_COUNT 37
-#define DANCES_COUNT 85
+#define DANCES_COUNT 86
 
 // ============================================================
 // Globals
@@ -211,7 +216,7 @@ public Plugin myinfo =
     name = "[L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.1.0",
+    version = "2.2.0",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
 
@@ -280,11 +285,11 @@ int Native_IsClientEmoting(Handle plugin, int numParams)
 
 public void OnMapStart()
 {
-    AddFileToDownloadsTable("models/player/kodua/fnemotes_nearlycivilized.mdl");
-    AddFileToDownloadsTable("models/player/kodua/fnemotes_nearlycivilized.vvd");
-    AddFileToDownloadsTable("models/player/kodua/fnemotes_nearlycivilized.dx90.vtx");
+    AddFileToDownloadsTable(FILE_MODEL_PATH);
+    AddFileToDownloadsTable(FILE_MODEL_PATH_VDD);
+    AddFileToDownloadsTable(FILE_MODEL_PATH_VTX);
 
-    PrecacheModel("models/player/kodua/fnemotes_nearlycivilized.mdl", true);
+    PrecacheModel(FILE_MODEL_PATH, true);
 
     char sound[64];
     for (int i = 0; i < EMOTES_COUNT; i++)
@@ -845,7 +850,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         FormatEx(emoteEntName, sizeof(emoteEntName), "emoteEnt%i", GetRandomInt(1000000, 9999999));
 
         DispatchKeyValue(EmoteEnt, "targetname", emoteEntName);
-        DispatchKeyValue(EmoteEnt, "model",      "models/player/kodua/fnemotes_nearlycivilized.mdl");
+        DispatchKeyValue(EmoteEnt, "model",      FILE_MODEL_PATH);
         DispatchKeyValue(EmoteEnt, "solid",      "0");
         DispatchKeyValue(EmoteEnt, "rendermode", "10");
 
