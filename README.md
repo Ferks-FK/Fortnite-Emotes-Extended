@@ -20,6 +20,10 @@ It will likely work in other games, but I can't guarantee that.
 
 ## Changelog
 
+V2.2.0 (13/06/2026)
+
+- Add new emote (Dr Livesey Walk).
+
 V2.1.0 (01/06/2026)
 
 - Fix the issue where the incapacitated bot dies when switching teams.
