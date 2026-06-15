@@ -91,6 +91,7 @@ static const EmoteData g_Dances[] =
     { "Emote_BandOfTheFort",            "Emote_BandOfTheFort",              "none",                    "athena_emote_bandofthefort_music"   },
     { "Emote_Boogie_Down_Intro",        "Emote_Boogie_Down_Intro",          "Emote_Boogie_Down",       "emote_boogiedown"                   },
     { "Emote_Capoeira",                 "Emote_Capoeira",                   "none",                    "emote_capoeira"                     },
+    { "Emote_KungFu_Cat",               "Emote_KungFu_Cat",                 "none",                    "kung_fu_cat"                        },
     { "Emote_Charleston",               "Emote_Charleston",                 "none",                    "athena_emote_flapper_music"         },
     { "Emote_Chicken",                  "Emote_Chicken",                    "none",                    "athena_emote_chicken_foley_01"      },
     { "Emote_Dance_NoBones",            "Emote_Dance_NoBones",              "none",                    "athena_emote_music_boneless"        },
@@ -168,13 +169,14 @@ static const EmoteData g_Dances[] =
     { "Emote_Scenario",                 "Emote_Scenario",                   "none",                    "scenariooo"                         },
     { "Emote_Tpose",                    "Emote_Tpose",                      "none",                    ""                                   },
     { "Emote_SmoothDrive",              "Emote_SmoothDrive",                "none",                    "dropit"                             },
+    { "Emote_Groove_Battle",            "Emote_Groove_Battle",              "none",                    "groove_battle_1,groove_battle_2"    },
 };
 
 // ============================================================
 // Sets the total number of emotes and dances.
 // Setting any of these incorrectly will cause the server to crash.
 #define EMOTES_COUNT 37
-#define DANCES_COUNT 86
+#define DANCES_COUNT 88
 
 // ============================================================
 // Globals
@@ -216,7 +218,7 @@ public Plugin myinfo =
     name = "[L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.2.0",
+    version = "2.2.1",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
 

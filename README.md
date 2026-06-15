@@ -20,6 +20,11 @@ It will likely work in other games, but I can't guarantee that.
 
 ## Changelog
 
+V2.2.1 (15/06/2026)
+
+- Add emote Kung Fu Cat [Original](https://steamcommunity.com/sharedfiles/filedetails/?id=3612367206)
+- Add emote Groove Battle [Original](https://steamcommunity.com/sharedfiles/filedetails/?id=2842271007)
+
 V2.2.0 (13/06/2026)
 
 - Add new emote (Dr Livesey Walk).

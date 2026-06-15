@@ -388,6 +388,10 @@
 		"tr"			"Capoeira"
 		"es"			"Capoeira"
 	}
+	"Emote_KungFu_Cat"
+	{
+		"en"			"Kung Fu Cat"
+	}
 	"Emote_Charleston"
 	{
 		"en"			"Flapper"
@@ -641,6 +645,10 @@
 	"Emote_DrLivesey_Walk"
 	{
 		"en"			"Dr. Livesey Walk"	
+	}
+	"Emote_Groove_Battle"
+	{
+		"en"			"Groove Battle"
 	}
 	"Emote_Gangnam_Style"
 	{
