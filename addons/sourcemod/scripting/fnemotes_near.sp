@@ -1403,5 +1403,5 @@ float GetSurvivorModelScale(int client)
     if (StrContains(model, "mechanic", false) != -1)    // Ellis
         return 0.955;
 
-    return 1.0; // Nick, Bill, Francis, Louis e qualquer outro caso
+    return 1.0; // Nick, Bill, Francis, Louis
 }
