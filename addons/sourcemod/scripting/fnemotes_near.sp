@@ -859,6 +859,11 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         ActivateEntity(EmoteEnt);
         DispatchSpawn(EmoteEnt);
 
+        float flScale = GetSurvivorModelScale(client);
+
+        if (flScale != 1.0)
+            SetEntPropFloat(EmoteEnt, Prop_Send, "m_flModelScale", flScale);
+
         TeleportEntity(EmoteEnt, vec, ang, NULL_VECTOR);
 
         SetVariantString(emoteEntName);
@@ -881,7 +886,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
                 DispatchKeyValue(EmoteSoundEnt, "targetname", soundEntName);
                 DispatchSpawn(EmoteSoundEnt);
 
-                vec[2] += 72.0;
+                vec[2] += 72.0 * flScale;
                 TeleportEntity(EmoteSoundEnt, vec, NULL_VECTOR, NULL_VECTOR);
 
                 SetVariantString(emoteEntName);
@@ -1009,6 +1014,9 @@ void StopEmote(int client)
     int iEmoteEnt = EntRefToEntIndex(g_iEmoteEnt[client]);
     if (iEmoteEnt && iEmoteEnt != INVALID_ENT_REFERENCE && IsValidEntity(iEmoteEnt))
     {
+        // https://forums.alliedmods.net/showthread.php?t=212872
+        SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
+
         char emoteEntName[50];
         GetEntPropString(iEmoteEnt, Prop_Data, "m_iName", emoteEntName, sizeof(emoteEntName));
         SetVariantString(emoteEntName);
@@ -1058,6 +1066,9 @@ void TerminateEmote(int client)
     int iEmoteEnt = EntRefToEntIndex(g_iEmoteEnt[client]);
     if (iEmoteEnt && iEmoteEnt != INVALID_ENT_REFERENCE && IsValidEntity(iEmoteEnt))
     {
+        // https://forums.alliedmods.net/showthread.php?t=212872
+        SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
+
         char emoteEntName[50];
         GetEntPropString(iEmoteEnt, Prop_Data, "m_iName", emoteEntName, sizeof(emoteEntName));
         SetVariantString(emoteEntName);
@@ -1376,4 +1387,21 @@ stock L4DTeam L4D_GetClientTeam(int client)
 	int team = GetClientTeam(client);
 
 	return view_as<L4DTeam>(team);
+}
+
+float GetSurvivorModelScale(int client)
+{
+    char model[PLATFORM_MAX_PATH];
+    GetClientModel(client, model, sizeof(model));
+
+    if (StrContains(model, "producer", false) != -1)   // Rochelle
+        return 0.888;
+    if (StrContains(model, "teenangst", false) != -1)   // Zoey
+        return 0.888;
+    if (StrContains(model, "coach", false) != -1)       // Coach
+        return 1.05;
+    if (StrContains(model, "mechanic", false) != -1)    // Ellis
+        return 0.955;
+
+    return 1.0; // Nick, Bill, Francis, Louis e qualquer outro caso
 }
