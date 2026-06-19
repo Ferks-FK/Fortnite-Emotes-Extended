@@ -20,6 +20,13 @@ It will likely work in other games, but I can't guarantee that.
 
 ## Changelog
 
+V2.2.2 (19/06/2026)
+
+- Add emote Walky Walk.
+- Add emote Epic Sax Guy.
+- Add taunt Quagmire.
+- Animations by [Actmod](https://steamcommunity.com/sharedfiles/filedetails/?id=2538387266)
+
 V2.2.1 (15/06/2026)
 
 - Add emote Kung Fu Cat [Original](https://steamcommunity.com/sharedfiles/filedetails/?id=3612367206)
