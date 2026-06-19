@@ -106,9 +106,6 @@
 		"tr"			"Danslar"  
 		"es"			"Bailes"
 	}
-
-	// ── Emotes (IDs 1–37, gerados pelo código) ─────────────────
-
 	"Emote_Fonzie_Pistol"
 	{
 		"en"			"Finger Guns"
@@ -650,6 +647,14 @@
 	{
 		"en"			"Groove Battle"
 	}
+	"Emote_Walkywalk_Walk"
+	{
+		"en"			"Walkywalk Walk"
+	}
+	"Emote_EpicSaxGuy"
+	{
+		"en"			"Epic Sax Guy"
+	}
 	"Emote_Gangnam_Style"
 	{
 		"en"			"Gangnam Style"
@@ -784,4 +789,8 @@
 		"tr"			"Araba sürmek"
 		"es"			"Conducir Coche"
 	}
+    "Taunt_Quagmire"
+    {
+        "en"			"Quagmire Taunt"
+    }
 }

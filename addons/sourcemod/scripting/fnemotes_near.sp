@@ -170,13 +170,16 @@ static const EmoteData g_Dances[] =
     { "Emote_Tpose",                    "Emote_Tpose",                      "none",                    ""                                   },
     { "Emote_SmoothDrive",              "Emote_SmoothDrive",                "none",                    "dropit"                             },
     { "Emote_Groove_Battle",            "Emote_Groove_Battle",              "none",                    "groove_battle_1,groove_battle_2"    },
+    { "Emote_Walkywalk_Walk",           "Emote_Walkywalk_Walk",             "none",                    "emote_walkywalk"                    },
+    { "Emote_EpicSaxGuy",               "Emote_EpicSaxGuy",                 "none",                    "emote_epicsaxguy"                   },
+    { "Taunt_Quagmire",                 "Taunt_Quagmire",                   "none",                    "taunt_quagmire"                     }, // New "Tount" category? im lazzy to make this now...
 };
 
 // ============================================================
 // Sets the total number of emotes and dances.
 // Setting any of these incorrectly will cause the server to crash.
 #define EMOTES_COUNT 37
-#define DANCES_COUNT 88
+#define DANCES_COUNT 91
 
 // ============================================================
 // Globals
@@ -218,7 +221,7 @@ public Plugin myinfo =
     name = "[L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.2.1",
+    version = "2.2.2",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
 
