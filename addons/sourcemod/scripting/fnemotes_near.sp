@@ -172,7 +172,7 @@ static const EmoteData g_Dances[] =
     { "Emote_Groove_Battle",            "Emote_Groove_Battle",              "none",                    "groove_battle_1,groove_battle_2"    },
     { "Emote_Walkywalk_Walk",           "Emote_Walkywalk_Walk",             "none",                    "emote_walkywalk"                    },
     { "Emote_EpicSaxGuy",               "Emote_EpicSaxGuy",                 "none",                    "emote_epicsaxguy"                   },
-    { "Taunt_Quagmire",                 "Taunt_Quagmire",                   "none",                    "taunt_quagmire"                     }, // New "Tount" category? im lazzy to make this now...
+    { "Taunt_Quagmire",                 "Taunt_Quagmire",                   "none",                    "taunt_quagmire"                     }, // New "Taunt" category? im lazzy to make this now...
 };
 
 // ============================================================
