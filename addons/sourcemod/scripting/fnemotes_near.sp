@@ -221,7 +221,7 @@ public Plugin myinfo =
     name = "[L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.2.2",
+    version = "2.3.0",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
 
@@ -845,7 +845,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
     if (g_iEmoteEnt[client])
         StopEmote(client);
 
-    if (GetEntityMoveType(client) == MOVETYPE_NONE)
+    if (GetEntityMoveType(client) == MOVETYPE_NONE || !DropCarryable(client))
     {
         CReplyToCommand(client, "%t", "CANNOT_USE_NOW");
         return Plugin_Handled;
@@ -1042,18 +1042,14 @@ void StopEmote(int client)
 
         if (g_cvTeleportBack.BoolValue)
             TeleportEntity(client, g_fLastPosition[client], g_fLastAngles[client], NULL_VECTOR);
+    }
 
-        ResetCam(client);
-        WeaponUnblock(client);
-        SetEntityMoveType(client, MOVETYPE_WALK);
-        g_iEmoteEnt[client]   = 0;
-        g_bClientDancing[client] = false;
-    }
-    else
-    {
-        g_iEmoteEnt[client]   = 0;
-        g_bClientDancing[client] = false;
-    }
+    // Always restore the player, even if the emote prop was already removed.
+    ResetCam(client);
+    WeaponUnblock(client);
+    SetEntityMoveType(client, MOVETYPE_WALK);
+    g_iEmoteEnt[client]   = 0;
+    g_bClientDancing[client] = false;
 
     if (g_iEmoteSoundEnt[client])
     {
@@ -1132,12 +1128,36 @@ void WeaponBlock(int client)
     if (g_cvHideWeapons.BoolValue)
         SDKHook(client, SDKHook_PostThinkPost, OnPostThinkPost);
 
+    g_iWeaponHandEnt[client] = INVALID_ENT_REFERENCE;
+
     int iEnt = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
     if (iEnt != -1)
     {
         g_iWeaponHandEnt[client] = EntIndexToEntRef(iEnt);
         SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", -1);
     }
+}
+
+// Carryables (propane, gascan, gnome...) can't be held while emoting.
+bool DropCarryable(int client)
+{
+    int iCarry = GetPlayerWeaponSlot(client, 5);
+    if (iCarry == -1 || GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != iCarry)
+        return true;
+
+    char sClass[64];
+    for (int slot = 0; slot <= 4; slot++)
+    {
+        int iWeapon = GetPlayerWeaponSlot(client, slot);
+        if (iWeapon == -1)
+            continue;
+
+        GetEntityClassname(iWeapon, sClass, sizeof(sClass));
+        FakeClientCommand(client, "use %s", sClass);
+        break;
+    }
+
+    return GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != iCarry;
 }
 
 void WeaponUnblock(int client)
@@ -1160,8 +1180,9 @@ void WeaponUnblock(int client)
 
     if (IsPlayerAlive(client) && g_iWeaponHandEnt[client] != INVALID_ENT_REFERENCE)
     {
+        // Only restore a weapon the player still owns, otherwise the game picks the next one.
         int iEnt = EntRefToEntIndex(g_iWeaponHandEnt[client]);
-        if (iEnt != INVALID_ENT_REFERENCE)
+        if (iEnt != INVALID_ENT_REFERENCE && GetEntPropEnt(iEnt, Prop_Send, "m_hOwner") == client)
             SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", iEnt);
     }
 
