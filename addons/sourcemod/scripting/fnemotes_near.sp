@@ -339,7 +339,7 @@ public void OnMapStart()
                 PrecacheEmoteSound(sound);
         }
     }
-
+    g_bSoundsCached = true;
 }
 
 // Precache sounds, with failure detection.
