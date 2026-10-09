@@ -269,40 +269,6 @@ public void OnPluginStart()
     AutoExecConfig(true, "fortnite_emotes_nearlycivilized");
 }
 
-public void OnConfigsExecuted()
-{
-    g_bCfgExecuted = true;
-}
-
-// For early read of cfg before AutoExecConfig. returns true on success
-stock bool ApplyCfgImmediately()
-{
-    File hFile = OpenFile("cfg/sourcemod/fortnite_emotes_nearlycivilized.cfg", "r");
-    if (hFile == null) return false;
-    static char line[PLATFORM_MAX_PATH];
-    static char cvarName[PLATFORM_MAX_PATH];
-    static char cvarValue[PLATFORM_MAX_PATH];
-    while (hFile.ReadLine(line,sizeof(line)))
-    {
-        TrimString(line);
-        if (strncmp(line,"sm_emotes_",10,false)!=0) continue; // allow only plugin cvars to be changed.
-        int spacePos = BreakString(line, cvarName, sizeof(cvarName));
-        if (spacePos == -1) continue;
-        ConVar cv = FindConVar(cvarName);
-        if (cv != null)
-        {
-            strcopy(cvarValue,PLATFORM_MAX_PATH,line[spacePos]);
-            TrimString(cvarValue);
-            StripQuotes(cvarValue);
-            if (cvarValue[0]==0) continue;
-            cv.SetString(cvarValue, true, false);
-            //if (DEBUG) LogMessage("ApplyCfgImmediately applied %s %s", cvarName, cvarValue);
-        }
-    }
-    delete hFile;
-    return true;
-}
-
 public void OnPluginEnd()
 {
     for (int i = 1; i <= MaxClients; i++)
