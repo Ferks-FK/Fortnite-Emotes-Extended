@@ -210,8 +210,8 @@ char  g_sEmoteSound[MAXPLAYERS+1][PLATFORM_MAX_PATH];
 
 bool  g_bClientDancing[MAXPLAYERS+1],
       g_bEmoteCooldown[MAXPLAYERS+1],
-      g_bHooked[MAXPLAYERS + 1];
-
+      g_bHooked[MAXPLAYERS+1],
+      g_bSoundsCached;
 
 float  g_fLastAngles[MAXPLAYERS+1][3],
        g_fLastPosition[MAXPLAYERS+1][3];
@@ -250,7 +250,7 @@ public void OnPluginStart()
     HookEvent("round_start",        Event_Start);
     HookEvent("round_end",          Event_RoundEnd);
 
-    g_cvEmotesSounds  = CreateConVar("sm_emotes_sounds",            "1",    "Enable/Disable sounds for emotes.", FCVAR_NOTIFY);
+    g_cvEmotesSounds  = CreateConVar("sm_emotes_sounds",            "1",    "Enable/Disable sounds for emotes. Sounds will activate on next map.", FCVAR_NOTIFY);
     g_cvCooldown      = CreateConVar("sm_emotes_cooldown",          "1.0",  "Cooldown for emotes in seconds. -1 or 0 = no cooldown.", FCVAR_NOTIFY);
     g_cvFlagEmotesMenu= CreateConVar("sm_emotes_admin_flag_menu",   "",     "admin flag for emotes (empty for all players)");
     g_cvFlagDancesMenu= CreateConVar("sm_dances_admin_flag_menu",   "",     "admin flag for dances (empty for all players)");
@@ -293,8 +293,14 @@ public void OnMapStart()
     AddFileToDownloadsTable(FILE_MODEL_PATH);
     AddFileToDownloadsTable(FILE_MODEL_PATH_VDD);
     AddFileToDownloadsTable(FILE_MODEL_PATH_VTX);
-
     PrecacheModel(FILE_MODEL_PATH, true);
+}
+
+public void OnConfigsExecuted()
+{
+    g_bSoundsCached = false;
+    if (!g_cvEmotesSounds.BoolValue)
+        return;
 
     char sound[64];
     for (int i = 0; i < EMOTES_COUNT; i++)
@@ -329,12 +335,19 @@ public void OnMapStart()
                 PrecacheEmoteSound(sound);
         }
     }
+    g_bSoundsCached = true;
 }
 
+// Precache a single emote sound, skipping missing files.
 void PrecacheEmoteSound(const char[] soundName)
 {
     char fullPath[PLATFORM_MAX_PATH];
     FormatEx(fullPath, sizeof(fullPath), "%s%s.mp3", SOUND_BASE_FULL, soundName);
+    if (!FileExists(fullPath, true))
+    {
+        LogError("Emote sound not found: %s", fullPath);
+        return;
+    }
     AddFileToDownloadsTable(fullPath);
 
     char precachePath[PLATFORM_MAX_PATH];
@@ -878,7 +891,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
             EF_BONEMERGE | EF_NOSHADOW | EF_NORECEIVESHADOW | EF_BONEMERGE_FASTCULL | EF_PARENT_ANIMATES);
 
         // Sound
-        if (g_cvEmotesSounds.BoolValue && !StrEqual(soundName, ""))
+        if (g_cvEmotesSounds.BoolValue && g_bSoundsCached && !StrEqual(soundName, ""))
         {
             int EmoteSoundEnt = CreateEntityByName("info_target");
             if (IsValidEntity(EmoteSoundEnt))
