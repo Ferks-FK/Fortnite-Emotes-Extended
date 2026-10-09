@@ -321,7 +321,6 @@ public void OnMapStart()
             else
                 PrecacheEmoteSound(sound);
         }
-        if (!g_bSoundsCached) break;
     }
     for (int i = 0; i < DANCES_COUNT; i++)
     {
