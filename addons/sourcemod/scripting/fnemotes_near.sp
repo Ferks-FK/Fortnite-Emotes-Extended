@@ -211,8 +211,7 @@ char  g_sEmoteSound[MAXPLAYERS+1][PLATFORM_MAX_PATH];
 bool  g_bClientDancing[MAXPLAYERS+1],
       g_bEmoteCooldown[MAXPLAYERS+1],
       g_bHooked[MAXPLAYERS+1],
-      g_bSoundsCached,
-      g_bCfgExecuted;
+      g_bSoundsCached;
 
 float  g_fLastAngles[MAXPLAYERS+1][3],
        g_fLastPosition[MAXPLAYERS+1][3];
