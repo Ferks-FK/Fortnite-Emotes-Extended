@@ -221,7 +221,7 @@ public Plugin myinfo =
     name = "[L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.2.3",
+    version = "2.3.0",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
 
@@ -1139,8 +1139,6 @@ void WeaponBlock(int client)
 }
 
 // Carryables (propane, gascan, gnome...) can't be held while emoting.
-// Switching weapons makes the game drop them as a regular prop (SDKHooks_DropWeapon
-// leaves a weapon_* entity that no longer explodes). Returns false if still holding it.
 bool DropCarryable(int client)
 {
     int iCarry = GetPlayerWeaponSlot(client, 5);
