@@ -324,7 +324,6 @@ public void OnMapStart()
     }
     for (int i = 0; i < DANCES_COUNT; i++)
     {
-        if (!g_bSoundsCached) break;
         strcopy(sound, sizeof(sound), g_Dances[i].sound);
         if (!StrEqual(sound, ""))
         {
