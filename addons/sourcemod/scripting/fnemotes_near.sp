@@ -290,21 +290,18 @@ int Native_IsClientEmoting(Handle plugin, int numParams)
 
 public void OnMapStart()
 {
-
     AddFileToDownloadsTable(FILE_MODEL_PATH);
     AddFileToDownloadsTable(FILE_MODEL_PATH_VDD);
     AddFileToDownloadsTable(FILE_MODEL_PATH_VTX);
     PrecacheModel(FILE_MODEL_PATH, true);
+}
 
-    if (!g_bCfgExecuted) g_bCfgExecuted = ApplyCfgImmediately(); // if AutoExecConfig didn't run yet.
-
+public void OnConfigsExecuted()
+{
+    g_bSoundsCached = false;
     if (!g_cvEmotesSounds.BoolValue)
-    {
-        g_bSoundsCached = false;
         return;
-    }
 
-    g_bSoundsCached = true;
     char sound[64];
     for (int i = 0; i < EMOTES_COUNT; i++)
     {
@@ -341,22 +338,21 @@ public void OnMapStart()
     g_bSoundsCached = true;
 }
 
-// Precache sounds, with failure detection.
+// Precache a single emote sound, skipping missing files.
 void PrecacheEmoteSound(const char[] soundName)
 {
-    static char fullPath[PLATFORM_MAX_PATH];
+    char fullPath[PLATFORM_MAX_PATH];
     FormatEx(fullPath, sizeof(fullPath), "%s%s.mp3", SOUND_BASE_FULL, soundName);
-    static char precachePath[PLATFORM_MAX_PATH];
+    if (!FileExists(fullPath, true))
+    {
+        LogError("Emote sound not found: %s", fullPath);
+        return;
+    }
+    AddFileToDownloadsTable(fullPath);
+
+    char precachePath[PLATFORM_MAX_PATH];
     FormatEx(precachePath, sizeof(precachePath), "%s%s.mp3", SOUND_BASE_PATH, soundName);
-    if (FileExists(fullPath) && PrecacheSound(precachePath,true))
-    {
-        AddFileToDownloadsTable(fullPath);
-    }
-    else if (g_bSoundsCached)
-    {
-        g_bSoundsCached = false;
-        LogMessage("PrecacheSound %s failed, sounds disabled.", soundName);
-    }
+    PrecacheSound(precachePath);
 }
 
 public void OnClientPutInServer(int client)
