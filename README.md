@@ -20,6 +20,13 @@ It will likely work in other games, but I can't guarantee that.
 
 ## Changelog
 
+V2.3.0 (09/10/2026)
+
+- Sounds are no longer downloaded/precached when `sm_emotes_sounds` is disabled, and a missing sound file now only skips that file instead of disabling all sounds. Thanks to gvazdas ([PR](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/pull/1)).
+- Fixed players ending up with no usable weapon after an emote while holding a carryable (propane tank, gas can, gnome...). The item is now dropped before the emote and can still be picked up or explode.
+- Fixed players being left frozen and unable to switch weapons if the emote was interrupted unexpectedly.
+- Weapons are only restored after an emote if the player still owns them.
+
 V2.2.2 (19/06/2026)
 
 - Add emote Walky Walk.
