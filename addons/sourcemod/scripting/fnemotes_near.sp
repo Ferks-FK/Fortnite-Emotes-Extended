@@ -8,6 +8,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define EF_NODRAW    32  // Don't render
 #define EF_BONEMERGE                (1 << 0)
 #define EF_NOSHADOW                 (1 << 4)
 #define EF_BONEMERGE_FASTCULL       (1 << 7)
@@ -19,9 +20,8 @@
 #define SOUND_BASE_PATH "kodua/fortnite_emotes/"
 #define SOUND_BASE_FULL "sound/kodua/fortnite_emotes/"
 
-#define FILE_MODEL_PATH "models/player/kodua/fnemotes_nearlycivilized_v2.mdl"
-#define FILE_MODEL_PATH_VDD "models/player/kodua/fnemotes_nearlycivilized_v2.vvd"
-#define FILE_MODEL_PATH_VTX "models/player/kodua/fnemotes_nearlycivilized_v2.dx90.vtx"
+#define FILE_MODEL_BASE      "models/player/kodua/fnemotes_nearlycivilized_v2"
+#define FILE_MODEL_BASE_L4D1 "models/player/kodua/fnemotes_nearlycivilized_v2_l4d1"
 
 enum L4DTeam
 {
@@ -201,29 +201,60 @@ ConVar  g_cvHidePlayers,
         g_cvHideWeapons,
         g_cvTeleportBack;
 
+// Increasing id for emote/sound entity targetnames
+int   g_iEntNameId;
+
 int   g_iEmoteEnt[MAXPLAYERS+1],
       g_iEmoteSoundEnt[MAXPLAYERS+1],
       g_EmotesTarget[MAXPLAYERS+1],
-      g_iWeaponHandEnt[MAXPLAYERS+1];
+      g_iWeaponHandEnt[MAXPLAYERS+1],
+      g_iSkinEnt[MAXPLAYERS+1];
 
-char  g_sEmoteSound[MAXPLAYERS+1][PLATFORM_MAX_PATH];
+char  g_sEmoteSound[MAXPLAYERS+1][PLATFORM_MAX_PATH],
+      g_sEmoteLoop[MAXPLAYERS+1][64],
+      g_sModelPath[PLATFORM_MAX_PATH];
 
 bool  g_bClientDancing[MAXPLAYERS+1],
       g_bEmoteCooldown[MAXPLAYERS+1],
       g_bHooked[MAXPLAYERS+1],
-      g_bSoundsCached;
+      g_bSoundsCached,
+      g_bL4D2;
 
 float  g_fLastAngles[MAXPLAYERS+1][3],
        g_fLastPosition[MAXPLAYERS+1][3];
 
 public Plugin myinfo =
 {
-    name = "[L4D2] Fortnite Emotes & Dances",
-    author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK",
+    name = "[L4D1/L4D2] Fortnite Emotes & Dances",
+    author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK, gvazdas",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.3.0",
+    version = "2.3.1",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
+
+// First thing that fires in the entire plugin lifecycle.
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+    switch (GetEngineVersion())
+    {
+        case Engine_Left4Dead2: // FUTURE: Engine_Left4Dead2OB
+        {
+            g_bL4D2 = true;
+        }
+        case Engine_Left4Dead:
+        {
+            g_bL4D2 = false;
+        }
+        default:
+        {
+            strcopy(error,err_max,"Plugin only supports L4D1 and L4D2.");
+		    return APLRes_Failure;
+        }
+    }
+    RegPluginLibrary("fnemotes");
+    CreateNative("fnemotes_IsClientEmoting", Native_IsClientEmoting);
+    return APLRes_Success;
+}
 
 public void OnPluginStart()
 {
@@ -276,13 +307,6 @@ public void OnPluginEnd()
             StopEmote(i);
 }
 
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
-{
-    RegPluginLibrary("fnemotes");
-    CreateNative("fnemotes_IsClientEmoting", Native_IsClientEmoting);
-    return APLRes_Success;
-}
-
 int Native_IsClientEmoting(Handle plugin, int numParams)
 {
     return g_bClientDancing[GetNativeCell(1)];
@@ -290,10 +314,17 @@ int Native_IsClientEmoting(Handle plugin, int numParams)
 
 public void OnMapStart()
 {
-    AddFileToDownloadsTable(FILE_MODEL_PATH);
-    AddFileToDownloadsTable(FILE_MODEL_PATH_VDD);
-    AddFileToDownloadsTable(FILE_MODEL_PATH_VTX);
-    PrecacheModel(FILE_MODEL_PATH, true);
+    char base[PLATFORM_MAX_PATH], path[PLATFORM_MAX_PATH];
+    strcopy(base, sizeof(base), g_bL4D2 ? FILE_MODEL_BASE : FILE_MODEL_BASE_L4D1);
+
+    FormatEx(path, sizeof(path), "%s.vvd", base);
+    AddFileToDownloadsTable(path);
+    FormatEx(path, sizeof(path), "%s.dx90.vtx", base);
+    AddFileToDownloadsTable(path);
+
+    FormatEx(g_sModelPath, sizeof(g_sModelPath), "%s.mdl", base);
+    AddFileToDownloadsTable(g_sModelPath);
+    PrecacheModel(g_sModelPath, true);
 }
 
 public void OnConfigsExecuted()
@@ -392,15 +423,19 @@ public void OnClientDisconnect(int client)
 void Event_BotReplacePlayer(Event event, const char[] name, bool dontBroadcast)
 {
     int player = GetClientOfUserId(event.GetInt("player"));
+    if (IsValidClient(player))
+    {
+        StopEmote(player);
+        SetEntityMoveType(player, MOVETYPE_WALK);
+    }
+
     int bot    = GetClientOfUserId(event.GetInt("bot"));
-
-    StopEmote(player);
-    StopEmote(bot);
-
-    SetEntityMoveType(player, MOVETYPE_WALK);
-
-    if (!bIsPlayerIncapped(bot))
-        SetEntityMoveType(bot, MOVETYPE_WALK);
+    if (IsValidClient(bot))
+    {
+        StopEmote(bot);
+        if (!bIsPlayerIncapped(bot))
+            SetEntityMoveType(bot, MOVETYPE_WALK);
+    }
 }
 
 void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
@@ -423,10 +458,11 @@ void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 void Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(event.GetInt("userid"));
-
-    StopEmote(client);
-
-    CreateTimer(0.1, Timer_ResetMovetype, client);
+    if (IsValidClient(client))
+    {
+        StopEmote(client);
+        CreateTimer(0.1, Timer_ResetMovetype, client);
+    }
 }
 
 void Event_Start(Event event, const char[] name, bool dontBroadcast)
@@ -864,11 +900,11 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         g_fLastPosition[client] = vec;
         g_fLastAngles[client]   = ang;
 
-        char emoteEntName[16];
-        FormatEx(emoteEntName, sizeof(emoteEntName), "emoteEnt%i", GetRandomInt(1000000, 9999999));
+        char emoteEntName[32];
+        FormatEx(emoteEntName, sizeof(emoteEntName), "emoteEnt%i", ++g_iEntNameId);
 
         DispatchKeyValue(EmoteEnt, "targetname", emoteEntName);
-        DispatchKeyValue(EmoteEnt, "model",      FILE_MODEL_PATH);
+        DispatchKeyValue(EmoteEnt, "model",      g_sModelPath);
         DispatchKeyValue(EmoteEnt, "solid",      "0");
         DispatchKeyValue(EmoteEnt, "rendermode", "10");
 
@@ -876,11 +912,13 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         DispatchSpawn(EmoteEnt);
 
         float flScale = GetSurvivorModelScale(client);
-
-        if (flScale != 1.0)
+        if (g_bL4D2 && flScale != 1.0)
             SetEntPropFloat(EmoteEnt, Prop_Send, "m_flModelScale", flScale);
 
         TeleportEntity(EmoteEnt, vec, ang, NULL_VECTOR);
+
+        if (!g_bL4D2)
+            L4D1_AttachSkin(client);
 
         SetVariantString(emoteEntName);
         AcceptEntityInput(client, "SetParent", client, client, 0);
@@ -896,8 +934,8 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
             int EmoteSoundEnt = CreateEntityByName("info_target");
             if (IsValidEntity(EmoteSoundEnt))
             {
-                char soundEntName[16];
-                FormatEx(soundEntName, sizeof(soundEntName), "soundEnt%i", GetRandomInt(1000000, 9999999));
+                char soundEntName[32];
+                FormatEx(soundEntName, sizeof(soundEntName), "soundEnt%i", ++g_iEntNameId);
 
                 DispatchKeyValue(EmoteSoundEnt, "targetname", soundEntName);
                 DispatchSpawn(EmoteSoundEnt);
@@ -934,10 +972,11 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
 
         if (StrEqual(anim2, "none", false))
             HookSingleEntityOutput(EmoteEnt, "OnAnimationDone", EndAnimation, true);
-        else
+        else if (!StrEqual(anim2, ""))
         {
-            SetVariantString(anim2);
-            AcceptEntityInput(EmoteEnt, "SetDefaultAnimation", -1, -1, 0);
+            // When the intro ends the prop falls back to sequence 0 (DanceMoves). Start the loop ourselves instead.
+            strcopy(g_sEmoteLoop[client], sizeof(g_sEmoteLoop[]), anim2);
+            HookSingleEntityOutput(EmoteEnt, "OnAnimationDone", StartLoopAnimation, true);
         }
 
         SetVariantString(anim1);
@@ -1004,8 +1043,21 @@ void EndAnimation(const char[] output, int caller, int activator, float delay)
     if (caller > 0)
     {
         activator = GetEmoteActivator(EntIndexToEntRef(caller));
-        StopEmote(activator);
+        if (IsValidClient(activator)) StopEmote(activator);
     }
+}
+
+void StartLoopAnimation(const char[] output, int caller, int activator, float delay)
+{
+    int client = GetEmoteActivator(EntIndexToEntRef(caller));
+    if (!IsValidClient(client))
+        return;
+
+    SetVariantString(g_sEmoteLoop[client]);
+    AcceptEntityInput(caller, "SetAnimation", -1, -1, 0);
+
+    if (g_cvSpeed.FloatValue != 1.0)
+        SetEntPropFloat(caller, Prop_Send, "m_flPlaybackRate", g_cvSpeed.FloatValue);
 }
 
 int GetEmoteActivator(int iEntRefDancer)
@@ -1031,7 +1083,11 @@ void StopEmote(int client)
     if (iEmoteEnt && iEmoteEnt != INVALID_ENT_REFERENCE && IsValidEntity(iEmoteEnt))
     {
         // https://forums.alliedmods.net/showthread.php?t=212872
-        SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
+        if (g_bL4D2) SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
+        SetEntProp(iEmoteEnt, Prop_Send, "m_fEffects",
+            GetEntProp(iEmoteEnt, Prop_Send, "m_fEffects") | EF_NODRAW | EF_NOSHADOW | EF_NORECEIVESHADOW);
+        SetEntityRenderMode(iEmoteEnt, view_as<RenderMode>(RENDER_NONE));
+        SET_TRANSMIT_ALWAYS(iEmoteEnt);
 
         char emoteEntName[50];
         GetEntPropString(iEmoteEnt, Prop_Data, "m_iName", emoteEntName, sizeof(emoteEntName));
@@ -1045,6 +1101,7 @@ void StopEmote(int client)
     }
 
     // Always restore the player, even if the emote prop was already removed.
+    L4D1_RemoveSkin(client);
     ResetCam(client);
     WeaponUnblock(client);
     SetEntityMoveType(client, MOVETYPE_WALK);
@@ -1075,11 +1132,17 @@ void TerminateEmote(int client)
     if (!g_iEmoteEnt[client])
         return;
 
+    L4D1_RemoveSkin(client);
+
     int iEmoteEnt = EntRefToEntIndex(g_iEmoteEnt[client]);
     if (iEmoteEnt && iEmoteEnt != INVALID_ENT_REFERENCE && IsValidEntity(iEmoteEnt))
     {
         // https://forums.alliedmods.net/showthread.php?t=212872
-        SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
+        if (g_bL4D2) SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
+        SetEntProp(iEmoteEnt, Prop_Send, "m_fEffects",
+            GetEntProp(iEmoteEnt, Prop_Send, "m_fEffects") | EF_NODRAW | EF_NOSHADOW | EF_NORECEIVESHADOW);
+        SetEntityRenderMode(iEmoteEnt, view_as<RenderMode>(RENDER_NONE));
+        SET_TRANSMIT_ALWAYS(iEmoteEnt);
 
         char emoteEntName[50];
         GetEntPropString(iEmoteEnt, Prop_Data, "m_iName", emoteEntName, sizeof(emoteEntName));
@@ -1212,14 +1275,69 @@ public Action SetTransmit(int entity, int client)
 
 void SetCam(int client)
 {
-    SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 99999.3);
+    if (g_bL4D2)
+        SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 99999.3);
+    else
+    {
+        // L4D1 has no forced external view: use the observer chase camera on the player itself.
+        SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", 0);
+        SetEntProp(client, Prop_Send, "m_iObserverMode", 1);
+        SetEntProp(client, Prop_Send, "m_bDrawViewmodel", 0);
+    }
     SetEntProp(client, Prop_Send, "m_iHideHUD", GetEntProp(client, Prop_Send, "m_iHideHUD") | HIDEHUD_CROSSHAIR);
 }
 
 void ResetCam(int client)
 {
-    SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 0.0);
+    if (g_bL4D2)
+        SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 0.0);
+    else if (IsPlayerAlive(client) && GetEntProp(client, Prop_Send, "m_iObserverMode") == 1)
+    {
+        // Only undo our own camera; dead players must keep their spectator mode.
+        SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", -1);
+        SetEntProp(client, Prop_Send, "m_iObserverMode", 0);
+        SetEntProp(client, Prop_Send, "m_bDrawViewmodel", 1);
+    }
     SetEntProp(client, Prop_Send, "m_iHideHUD", GetEntProp(client, Prop_Send, "m_iHideHUD") & ~HIDEHUD_CROSSHAIR);
+}
+
+// L4D1 doesn't draw the player bonemerged to the emote prop, so a copy of its model
+// rides on the player instead (approach from foxhound's L4D1/2 version).
+void L4D1_AttachSkin(int client)
+{
+    L4D1_RemoveSkin(client);
+
+    char model[PLATFORM_MAX_PATH];
+    GetClientModel(client, model, sizeof(model));
+
+    int skin = CreateEntityByName("commentary_dummy");
+    if (skin == -1)
+        return;
+
+    DispatchKeyValue(skin, "model", model);
+    DispatchSpawn(skin);
+    SetEntProp(skin, Prop_Send, "m_fEffects", EF_BONEMERGE | EF_BONEMERGE_FASTCULL | EF_PARENT_ANIMATES);
+    SetVariantString("!activator");
+    AcceptEntityInput(skin, "SetParent", client, skin);
+    SetVariantString("primary");
+    AcceptEntityInput(skin, "SetParentAttachment", skin, skin, 0);
+
+    g_iSkinEnt[client] = EntIndexToEntRef(skin);
+    SetEntityRenderMode(client, RENDER_TRANSALPHA);
+}
+
+void L4D1_RemoveSkin(int client)
+{
+    if (!g_iSkinEnt[client])
+        return;
+
+    int skin = EntRefToEntIndex(g_iSkinEnt[client]);
+    if (skin != INVALID_ENT_REFERENCE)
+        AcceptEntityInput(skin, "Kill");
+
+    g_iSkinEnt[client] = 0;
+    if (IsClientInGame(client))
+        SetEntityRenderMode(client, RENDER_NORMAL);
 }
 
 Action ResetCooldown(Handle timer, any client)
@@ -1441,4 +1559,11 @@ float GetSurvivorModelScale(int client)
         return 0.955;
 
     return 1.0; // Nick, Bill, Francis, Louis
+}
+
+// Transmit to all clients always. Skips SetTransmit completely.
+stock void SET_TRANSMIT_ALWAYS(int entity)
+{
+    int flags = GetEdictFlags(entity);
+    SetEdictFlags(entity, flags | FL_EDICT_ALWAYS);
 }
