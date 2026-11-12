@@ -917,8 +917,12 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
 
         TeleportEntity(EmoteEnt, vec, ang, NULL_VECTOR);
 
+        // With the L4D1 observer camera, leftover velocity keeps the view bobbing for the whole emote.
+        float zero[3];
+        TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, zero);
+
         if (!g_bL4D2)
-            L4D1_AttachSkin(client);
+            L4D1_AttachSkin(client, EmoteEnt);
 
         SetVariantString(emoteEntName);
         AcceptEntityInput(client, "SetParent", client, client, 0);
@@ -1303,7 +1307,7 @@ void ResetCam(int client)
 
 // L4D1 doesn't draw the player bonemerged to the emote prop, so a copy of its model
 // rides on the player instead (approach from foxhound's L4D1/2 version).
-void L4D1_AttachSkin(int client)
+void L4D1_AttachSkin(int client, int emoteEnt)
 {
     L4D1_RemoveSkin(client);
 
@@ -1317,10 +1321,9 @@ void L4D1_AttachSkin(int client)
     DispatchKeyValue(skin, "model", model);
     DispatchSpawn(skin);
     SetEntProp(skin, Prop_Send, "m_fEffects", EF_BONEMERGE | EF_BONEMERGE_FASTCULL | EF_PARENT_ANIMATES);
+    // Follow the emote prop directly: riding the player's aim-driven "primary" attachment shook with the mouse.
     SetVariantString("!activator");
-    AcceptEntityInput(skin, "SetParent", client, skin);
-    SetVariantString("primary");
-    AcceptEntityInput(skin, "SetParentAttachment", skin, skin, 0);
+    AcceptEntityInput(skin, "SetParent", emoteEnt, skin);
 
     g_iSkinEnt[client] = EntIndexToEntRef(skin);
     SetEntityRenderMode(client, RENDER_TRANSALPHA);
