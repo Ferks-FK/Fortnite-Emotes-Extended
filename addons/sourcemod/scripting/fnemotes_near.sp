@@ -868,11 +868,17 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         return Plugin_Handled;
     }
 
-    // m_zombieClass on L4D2: 4 Spitter, 5 Jockey, 6 Charger.
+    // 4 = Spitter, 5 = Jockey, 6 = Charger
     if (g_bL4D2 && g_cvBlockNonHumanoid.BoolValue && L4D_GetClientTeam(client) == L4DTeam_Infected
         && 4 <= GetEntProp(client, Prop_Send, "m_zombieClass") <= 6)
     {
         CReplyToCommand(client, "%t", "CLASS_CANNOT_EMOTE");
+        return Plugin_Handled;
+    }
+
+    if (IsThrowingRock(client))
+    {
+        CReplyToCommand(client, "%t", "CANNOT_USE_NOW");
         return Plugin_Handled;
     }
 
@@ -927,7 +933,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
 
         TeleportEntity(EmoteEnt, vec, ang, NULL_VECTOR);
 
-        // With the observer camera (L4D1, L4D2 infected), leftover velocity keeps the view bobbing for the whole emote.
+        // Otherwise, starting the emote while moving keeps the camera bobbing.
         float zero[3];
         TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, zero);
 
@@ -988,7 +994,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
             HookSingleEntityOutput(EmoteEnt, "OnAnimationDone", EndAnimation, true);
         else if (!StrEqual(anim2, ""))
         {
-            // When the intro ends the prop falls back to sequence 0 (DanceMoves). Start the loop ourselves instead.
+            // Start the loop ourselves, otherwise the dance switches to DanceMoves after the intro.
             strcopy(g_sEmoteLoop[client], sizeof(g_sEmoteLoop[]), anim2);
             HookSingleEntityOutput(EmoteEnt, "OnAnimationDone", StartLoopAnimation, true);
         }
@@ -1291,15 +1297,49 @@ void SetCam(int client)
 {
     if (g_bL4D2 && L4D_GetClientTeam(client) != L4DTeam_Infected)
         SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 99999.3);
-    else
+    else if (!IsPinning(client))
     {
-        // L4D1 has no forced external view, and L4D2 infected ignore it:
-        // use the observer chase camera on the player itself.
+        // L4D1 has no third-person view, and L4D2 infected ignore it.
         SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", 0);
         SetEntProp(client, Prop_Send, "m_iObserverMode", 1);
         SetEntProp(client, Prop_Send, "m_bDrawViewmodel", 0);
     }
     SetEntProp(client, Prop_Send, "m_iHideHUD", GetEntProp(client, Prop_Send, "m_iHideHUD") | HIDEHUD_CROSSHAIR);
+}
+
+// The game already shows a Hunter/Smoker in third person while pinning someone.
+bool IsPinning(int client)
+{
+    return GetEntPropEnt(client, Prop_Send, "m_pounceVictim") > 0
+        || GetEntPropEnt(client, Prop_Send, "m_tongueVictim") > 0;
+}
+
+// Emoting during a throw sends the rock in the wrong direction.
+bool IsThrowingRock(int client)
+{
+    char cls[32];
+    int ability = GetEntPropEnt(client, Prop_Send, "m_customAbility");
+    if (ability <= MaxClients || !IsValidEntity(ability)
+        || !GetEntityClassname(ability, cls, sizeof(cls)) || !StrEqual(cls, "ability_throw"))
+        return false;
+
+    // The rock only appears halfway through the throw, so also check when the throw started.
+    static int timer = -2;
+    if (timer == -2)
+        timer = FindSendPropInfo("CThrow", "m_nextActivationTimer");
+    if (timer > 0 && GetGameTime() - (GetEntDataFloat(ability, timer + 8) - GetEntDataFloat(ability, timer + 4)) < 1.5)
+        return true;
+
+    // Rock still in the Tank's hand.
+    int rock = -1;
+    float vel[3];
+    while ((rock = FindEntityByClassname(rock, "tank_rock")) != -1)
+    {
+        GetEntPropVector(rock, Prop_Data, "m_vecAbsVelocity", vel);
+        if (GetEntPropEnt(rock, Prop_Send, "m_hOwnerEntity") == client && GetVectorLength(vel) < 100.0)
+            return true;
+    }
+    return false;
 }
 
 void ResetCam(int client)
@@ -1308,7 +1348,7 @@ void ResetCam(int client)
         SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 0.0);
     if (IsPlayerAlive(client) && GetEntProp(client, Prop_Send, "m_iObserverMode") == 1)
     {
-        // Only undo our own camera; dead players must keep their spectator mode.
+        // Don't touch the camera of a player who died during the emote.
         SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", -1);
         SetEntProp(client, Prop_Send, "m_iObserverMode", 0);
         SetEntProp(client, Prop_Send, "m_bDrawViewmodel", 1);
@@ -1316,9 +1356,8 @@ void ResetCam(int client)
     SetEntProp(client, Prop_Send, "m_iHideHUD", GetEntProp(client, Prop_Send, "m_iHideHUD") & ~HIDEHUD_CROSSHAIR);
 }
 
-// Players with the observer camera (L4D1, L4D2 infected) don't see their own model, and
-// L4D1 doesn't draw the bonemerged player at all: a copy of the model dances instead
-// (approach from foxhound's L4D1/2 version). The real player is hidden so nobody sees both.
+// On L4D1 and for infected the player's own model doesn't show the dance, so a copy of it
+// dances instead and the real player is hidden. Based on foxhound's L4D1/2 version.
 void AttachSkin(int client, int emoteEnt)
 {
     RemoveSkin(client);
@@ -1333,7 +1372,6 @@ void AttachSkin(int client, int emoteEnt)
     DispatchKeyValue(skin, "model", model);
     DispatchSpawn(skin);
     SetEntProp(skin, Prop_Send, "m_fEffects", EF_BONEMERGE | EF_BONEMERGE_FASTCULL | EF_PARENT_ANIMATES);
-    // Follow the emote prop directly: riding the player's aim-driven "primary" attachment shook with the mouse.
     SetVariantString("!activator");
     AcceptEntityInput(skin, "SetParent", emoteEnt, skin);
 
@@ -1345,7 +1383,7 @@ void AttachSkin(int client, int emoteEnt)
     SetEntityRenderColor(client, 255, 255, 255, 0);
 }
 
-// Ghost infected are hidden from survivors by the game; their dancing copy must be too.
+// Survivors can't see ghosts, so they can't see a ghost dancing either.
 Action Skin_SetTransmit(int skin, int viewer)
 {
     int owner = GetEntPropEnt(skin, Prop_Send, "m_hOwnerEntity");
