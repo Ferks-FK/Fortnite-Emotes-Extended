@@ -47,6 +47,12 @@
 		"tr"			"{darkred}[{blue}Emotes{darkred}] {default}Şu anda kullanamazsın!"		
 		"es"			"{darkred}[{blue}Emotes{darkred}] {default}No puedes usar eso ahora mismo!"
 	}
+	"CLASS_CANNOT_EMOTE"
+	{
+		"en"			"{darkred}[{blue}Emotes{darkred}] {default}This infected class cannot use emotes"
+		"tr"			"{darkred}[{blue}Emotes{darkred}] {default}Bu enfekte sınıfı emote kullanamaz!"
+		"es"			"{darkred}[{blue}Emotes{darkred}] {default}Esta clase de infectado no puede usar emotes!"
+	}
     "INVALID_EMOTE_ID"
     {
         "en"    "{darkred}[{blue}Emotes{darkred}] {default}Invalid Emote ID, Should be between (%d-%d)"

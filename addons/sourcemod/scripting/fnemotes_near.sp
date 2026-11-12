@@ -199,7 +199,8 @@ ConVar  g_cvHidePlayers,
         g_cvSpeed,
         g_cvEmotesSounds,
         g_cvHideWeapons,
-        g_cvTeleportBack;
+        g_cvTeleportBack,
+        g_cvBlockNonHumanoid;
 
 // Increasing id for emote/sound entity targetnames
 int   g_iEntNameId;
@@ -289,6 +290,7 @@ public void OnPluginStart()
     g_cvHidePlayers   = CreateConVar("sm_emotes_hide_enemies",      "0",    "Hide enemy players when dancing", FCVAR_NOTIFY);
     g_cvTeleportBack  = CreateConVar("sm_emotes_teleportonend",     "1",    "Teleport back to the exact position when he started to dance.", FCVAR_NOTIFY);
     g_cvSpeed         = CreateConVar("sm_emotes_speed",             "0.84", "Sets the playback speed of the animation.", FCVAR_PROTECTED);
+    g_cvBlockNonHumanoid = CreateConVar("sm_emotes_block_nonhumanoid", "1", "L4D2: block emotes for Spitter, Jockey and Charger (their skeletons can't play the dances).", FCVAR_NOTIFY);
 
     TopMenu topmenu;
     if (LibraryExists("adminmenu") && ((topmenu = GetAdminTopMenu()) != null))
@@ -866,6 +868,14 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         return Plugin_Handled;
     }
 
+    // m_zombieClass on L4D2: 4 Spitter, 5 Jockey, 6 Charger.
+    if (g_bL4D2 && g_cvBlockNonHumanoid.BoolValue && L4D_GetClientTeam(client) == L4DTeam_Infected
+        && 4 <= GetEntProp(client, Prop_Send, "m_zombieClass") <= 6)
+    {
+        CReplyToCommand(client, "%t", "CLASS_CANNOT_EMOTE");
+        return Plugin_Handled;
+    }
+
     if (CooldownTimers[client])
     {
         CReplyToCommand(client, "%t", "COOLDOWN_EMOTES");
@@ -917,12 +927,12 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
 
         TeleportEntity(EmoteEnt, vec, ang, NULL_VECTOR);
 
-        // With the L4D1 observer camera, leftover velocity keeps the view bobbing for the whole emote.
+        // With the observer camera (L4D1, L4D2 infected), leftover velocity keeps the view bobbing for the whole emote.
         float zero[3];
         TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, zero);
 
-        if (!g_bL4D2)
-            L4D1_AttachSkin(client, EmoteEnt);
+        if (!g_bL4D2 || L4D_GetClientTeam(client) == L4DTeam_Infected)
+            AttachSkin(client, EmoteEnt);
 
         SetVariantString(emoteEntName);
         AcceptEntityInput(client, "SetParent", client, client, 0);
@@ -1105,7 +1115,7 @@ void StopEmote(int client)
     }
 
     // Always restore the player, even if the emote prop was already removed.
-    L4D1_RemoveSkin(client);
+    RemoveSkin(client);
     ResetCam(client);
     WeaponUnblock(client);
     SetEntityMoveType(client, MOVETYPE_WALK);
@@ -1136,7 +1146,7 @@ void TerminateEmote(int client)
     if (!g_iEmoteEnt[client])
         return;
 
-    L4D1_RemoveSkin(client);
+    RemoveSkin(client);
 
     int iEmoteEnt = EntRefToEntIndex(g_iEmoteEnt[client]);
     if (iEmoteEnt && iEmoteEnt != INVALID_ENT_REFERENCE && IsValidEntity(iEmoteEnt))
@@ -1279,11 +1289,12 @@ public Action SetTransmit(int entity, int client)
 
 void SetCam(int client)
 {
-    if (g_bL4D2)
+    if (g_bL4D2 && L4D_GetClientTeam(client) != L4DTeam_Infected)
         SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 99999.3);
     else
     {
-        // L4D1 has no forced external view: use the observer chase camera on the player itself.
+        // L4D1 has no forced external view, and L4D2 infected ignore it:
+        // use the observer chase camera on the player itself.
         SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", 0);
         SetEntProp(client, Prop_Send, "m_iObserverMode", 1);
         SetEntProp(client, Prop_Send, "m_bDrawViewmodel", 0);
@@ -1295,7 +1306,7 @@ void ResetCam(int client)
 {
     if (g_bL4D2)
         SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 0.0);
-    else if (IsPlayerAlive(client) && GetEntProp(client, Prop_Send, "m_iObserverMode") == 1)
+    if (IsPlayerAlive(client) && GetEntProp(client, Prop_Send, "m_iObserverMode") == 1)
     {
         // Only undo our own camera; dead players must keep their spectator mode.
         SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", -1);
@@ -1305,11 +1316,12 @@ void ResetCam(int client)
     SetEntProp(client, Prop_Send, "m_iHideHUD", GetEntProp(client, Prop_Send, "m_iHideHUD") & ~HIDEHUD_CROSSHAIR);
 }
 
-// L4D1 doesn't draw the player bonemerged to the emote prop, so a copy of its model
-// rides on the player instead (approach from foxhound's L4D1/2 version).
-void L4D1_AttachSkin(int client, int emoteEnt)
+// Players with the observer camera (L4D1, L4D2 infected) don't see their own model, and
+// L4D1 doesn't draw the bonemerged player at all: a copy of the model dances instead
+// (approach from foxhound's L4D1/2 version). The real player is hidden so nobody sees both.
+void AttachSkin(int client, int emoteEnt)
 {
-    L4D1_RemoveSkin(client);
+    RemoveSkin(client);
 
     char model[PLATFORM_MAX_PATH];
     GetClientModel(client, model, sizeof(model));
@@ -1325,11 +1337,25 @@ void L4D1_AttachSkin(int client, int emoteEnt)
     SetVariantString("!activator");
     AcceptEntityInput(skin, "SetParent", emoteEnt, skin);
 
+    SetEntPropEnt(skin, Prop_Send, "m_hOwnerEntity", client);
+    SDKHook(skin, SDKHook_SetTransmit, Skin_SetTransmit);
+
     g_iSkinEnt[client] = EntIndexToEntRef(skin);
     SetEntityRenderMode(client, RENDER_TRANSALPHA);
+    SetEntityRenderColor(client, 255, 255, 255, 0);
 }
 
-void L4D1_RemoveSkin(int client)
+// Ghost infected are hidden from survivors by the game; their dancing copy must be too.
+Action Skin_SetTransmit(int skin, int viewer)
+{
+    int owner = GetEntPropEnt(skin, Prop_Send, "m_hOwnerEntity");
+    if (IsValidClient(owner) && GetEntProp(owner, Prop_Send, "m_isGhost")
+        && L4D_GetClientTeam(viewer) == L4DTeam_Survivor)
+        return Plugin_Handled;
+    return Plugin_Continue;
+}
+
+void RemoveSkin(int client)
 {
     if (!g_iSkinEnt[client])
         return;
@@ -1340,7 +1366,10 @@ void L4D1_RemoveSkin(int client)
 
     g_iSkinEnt[client] = 0;
     if (IsClientInGame(client))
+    {
         SetEntityRenderMode(client, RENDER_NORMAL);
+        SetEntityRenderColor(client, 255, 255, 255, 255);
+    }
 }
 
 Action ResetCooldown(Handle timer, any client)
