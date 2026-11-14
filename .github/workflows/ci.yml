@@ -25,14 +25,24 @@ jobs:
           mkdir -p ../plugins
           spcomp -i include -o ../plugins/fnemotes_near.smx fnemotes_near.sp
 
-      - name: Create package
+      - name: Generate L4D1 model
+        run: python3 tools/make_l4d1_model.py
+
+      - name: Create packages
         run: |
           set -euo pipefail
-          mkdir -p /tmp/package/addons/sourcemod/plugins
-          cp addons/sourcemod/plugins/*.smx /tmp/package/addons/sourcemod/plugins/
-          mkdir -p /tmp/package/addons/sourcemod/translations
-          cp -R addons/sourcemod/translations/* /tmp/package/addons/sourcemod/translations/
-          cp -R models sound /tmp/package/
+          # Same plugin for both games; only the emote model differs.
+          for game in l4d1 l4d2; do
+            pkg=/tmp/package/$game
+            mkdir -p "$pkg/addons/sourcemod/plugins" "$pkg/addons/sourcemod/translations" "$pkg/models/player/kodua"
+            cp addons/sourcemod/plugins/*.smx "$pkg/addons/sourcemod/plugins/"
+            cp -R addons/sourcemod/translations/* "$pkg/addons/sourcemod/translations/"
+            cp -R sound "$pkg/"
+          done
+          for ext in mdl vvd dx90.vtx; do
+            cp "models/player/kodua/fnemotes_nearlycivilized_v2.$ext"      /tmp/package/l4d2/models/player/kodua/
+            cp "models/player/kodua/fnemotes_nearlycivilized_v2_l4d1.$ext" /tmp/package/l4d1/models/player/kodua/
+          done
 
       - name: Upload build archive for test runners
         uses: actions/upload-artifact@v7
@@ -88,9 +98,9 @@ jobs:
       - name: Package
         run: |
           set -euo pipefail
-          cd artifacts
-          tar -czf "../${{ github.event.repository.name }}-${{ env.RELEASE_VERSION }}.tar.gz" .
-          cd ..
+          for game in l4d1 l4d2; do
+            tar -czf "${{ github.event.repository.name }}-$game-${{ env.RELEASE_VERSION }}.tar.gz" -C "artifacts/$game" .
+          done
 
       - name: Release
         uses: svenstaro/upload-release-action@v2

@@ -4,9 +4,20 @@ This plugin allows players to use Emotes & Dances Fortnite do with all the priva
 
 > [!IMPORTANT]  
 > The modifications in this plugin are based on [this](https://forums.alliedmods.net/showpost.php?p=2836162&postcount=276) version, which is specifically designed for L4D1/2.
-The plugin only loads on L4D1 and L4D2. L4D1 uses its own copy of the emote model (`fnemotes_nearlycivilized_v2_l4d1`).
+The plugin only loads on L4D1 and L4D2.
 
 **Original Version:** https://forums.alliedmods.net/showthread.php?t=318981
+
+## Installation
+Download the package for your game from the [releases](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/releases): `...-l4d2-<version>.tar.gz` or `...-l4d1-<version>.tar.gz`, and extract it into `left4dead2/` or `left4dead/`.
+The plugin is the same in both; only the emote model differs.
+
+### L4D1 model
+L4D1 uses `fnemotes_nearlycivilized_v2_l4d1`, generated from the L4D2 model (it renames 8 helper bones that bend the L4D1 survivors' limbs). It isn't stored in the repository: the release build generates it. After changing the model, you can generate it locally with:
+
+```
+python tools/make_l4d1_model.py
+```
 
 ## Commands
 - **`sm_emotes`** - User command for main menu;
@@ -24,6 +35,7 @@ V2.4.0 (11/11/2026)
 
 - Added L4D1 support: third-person camera, survivor model that follows the dance, and an L4D1 copy of the emote model without the limb distortion ([#6](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/issues/6)). Based on foxhound's L4D1/2 version, with help from gvazdas.
 - The plugin now refuses to load on games other than L4D1/L4D2.
+- Releases now have one package per game.
 - Fixed dances with an intro and a loop switching to another dance after the intro.
 - Hide the emote entity before it is removed, to avoid stuck shadows ([#5](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/issues/5)). Thanks to gvazdas.
 - Fixed possible errors when a player/bot leaves during an emote. Thanks to gvazdas.
