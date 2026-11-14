@@ -31,6 +31,13 @@ python tools/make_l4d1_model.py
 
 ## Changelog
 
+V2.4.1 (14/11/2026)
+
+- Infected can now use emotes on L4D2. Spitter, Jockey and Charger can't dance, so they are blocked by default (`sm_emotes_block_nonhumanoid`). Survivors can't see a ghost infected dancing.
+- Hunters and Smokers keep the game camera while pinning someone.
+- Tanks can't start an emote while throwing a rock, since it sent the rock in the wrong direction.
+- Removed an unused sound entity created on every emote; the emote sound now always stops when the emote ends ([#8](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/issues/8)). Thanks to gvazdas.
+
 V2.4.0 (11/11/2026)
 
 - Added L4D1 support: third-person camera, survivor model that follows the dance, and an L4D1 copy of the emote model without the limb distortion ([#6](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/issues/6)). Based on foxhound's L4D1/2 version, with help from gvazdas.

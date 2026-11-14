@@ -202,11 +202,10 @@ ConVar  g_cvHidePlayers,
         g_cvTeleportBack,
         g_cvBlockNonHumanoid;
 
-// Increasing id for emote/sound entity targetnames
+// Increasing id for emote entity targetnames
 int   g_iEntNameId;
 
 int   g_iEmoteEnt[MAXPLAYERS+1],
-      g_iEmoteSoundEnt[MAXPLAYERS+1],
       g_EmotesTarget[MAXPLAYERS+1],
       g_iWeaponHandEnt[MAXPLAYERS+1],
       g_iSkinEnt[MAXPLAYERS+1];
@@ -229,7 +228,7 @@ public Plugin myinfo =
     name = "[L4D1/L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK, gvazdas",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.4.0",
+    version = "2.4.1",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
 
@@ -951,39 +950,21 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         // Sound
         if (g_cvEmotesSounds.BoolValue && g_bSoundsCached && !StrEqual(soundName, ""))
         {
-            int EmoteSoundEnt = CreateEntityByName("info_target");
-            if (IsValidEntity(EmoteSoundEnt))
+            char soundNameBuffer[64];
+
+            if (StrContains(soundName, ",") != -1)
             {
-                char soundEntName[32];
-                FormatEx(soundEntName, sizeof(soundEntName), "soundEnt%i", ++g_iEntNameId);
-
-                DispatchKeyValue(EmoteSoundEnt, "targetname", soundEntName);
-                DispatchSpawn(EmoteSoundEnt);
-
-                vec[2] += 72.0 * flScale;
-                TeleportEntity(EmoteSoundEnt, vec, NULL_VECTOR, NULL_VECTOR);
-
-                SetVariantString(emoteEntName);
-                AcceptEntityInput(EmoteSoundEnt, "SetParent");
-
-                g_iEmoteSoundEnt[client] = EntIndexToEntRef(EmoteSoundEnt);
-
-                char soundNameBuffer[64];
-
-                if (StrContains(soundName, ",") != -1)
-                {
-                    char sounds[8][64];
-                    int count = ExplodeString(soundName, ",", sounds, sizeof(sounds), sizeof(sounds[]));
-                    strcopy(soundNameBuffer, sizeof(soundNameBuffer), sounds[GetRandomInt(0, count - 1)]);
-                }
-                else
-                    strcopy(soundNameBuffer, sizeof(soundNameBuffer), soundName);
-
-                FormatEx(g_sEmoteSound[client], PLATFORM_MAX_PATH,
-                    "%s%s.mp3", SOUND_BASE_PATH, soundNameBuffer);
-
-                EmitSoundToAll(g_sEmoteSound[client], client, SNDCHAN_AUTO, SNDLEVEL_RAIDSIREN);
+                char sounds[8][64];
+                int count = ExplodeString(soundName, ",", sounds, sizeof(sounds), sizeof(sounds[]));
+                strcopy(soundNameBuffer, sizeof(soundNameBuffer), sounds[GetRandomInt(0, count - 1)]);
             }
+            else
+                strcopy(soundNameBuffer, sizeof(soundNameBuffer), soundName);
+
+            FormatEx(g_sEmoteSound[client], PLATFORM_MAX_PATH,
+                "%s%s.mp3", SOUND_BASE_PATH, soundNameBuffer);
+
+            EmitSoundToAll(g_sEmoteSound[client], client, SNDCHAN_AUTO, SNDLEVEL_RAIDSIREN);
         }
         else
         {
@@ -1128,22 +1109,15 @@ void StopEmote(int client)
     g_iEmoteEnt[client]   = 0;
     g_bClientDancing[client] = false;
 
-    if (g_iEmoteSoundEnt[client])
+    StopEmoteSound(client);
+}
+
+void StopEmoteSound(int client)
+{
+    if (g_sEmoteSound[client][0])
     {
-        int iEmoteSoundEnt = EntRefToEntIndex(g_iEmoteSoundEnt[client]);
-        if (!StrEqual(g_sEmoteSound[client], "")
-            && iEmoteSoundEnt
-            && iEmoteSoundEnt != INVALID_ENT_REFERENCE
-            && IsValidEntity(iEmoteSoundEnt))
-        {
-            StopSound(client, SNDCHAN_AUTO, g_sEmoteSound[client]);
-            AcceptEntityInput(iEmoteSoundEnt, "Kill");
-            g_iEmoteSoundEnt[client] = 0;
-        }
-        else
-        {
-            g_iEmoteSoundEnt[client] = 0;
-        }
+        StopSound(client, SNDCHAN_AUTO, g_sEmoteSound[client]);
+        g_sEmoteSound[client][0] = '\0';
     }
 }
 
@@ -1180,23 +1154,7 @@ void TerminateEmote(int client)
         g_bClientDancing[client] = false;
     }
 
-    if (g_iEmoteSoundEnt[client])
-    {
-        int iEmoteSoundEnt = EntRefToEntIndex(g_iEmoteSoundEnt[client]);
-        if (!StrEqual(g_sEmoteSound[client], "")
-            && iEmoteSoundEnt
-            && iEmoteSoundEnt != INVALID_ENT_REFERENCE
-            && IsValidEntity(iEmoteSoundEnt))
-        {
-            StopSound(client, SNDCHAN_AUTO, g_sEmoteSound[client]);
-            AcceptEntityInput(iEmoteSoundEnt, "Kill");
-            g_iEmoteSoundEnt[client] = 0;
-        }
-        else
-        {
-            g_iEmoteSoundEnt[client] = 0;
-        }
-    }
+    StopEmoteSound(client);
 }
 
 // ============================================================
