@@ -4,7 +4,7 @@ This plugin allows players to use Emotes & Dances Fortnite do with all the priva
 
 > [!IMPORTANT]  
 > The modifications in this plugin are based on [this](https://forums.alliedmods.net/showpost.php?p=2836162&postcount=276) version, which is specifically designed for L4D1/2.
-It will likely work in other games, but I can't guarantee that.
+The plugin only loads on L4D1 and L4D2. L4D1 uses its own copy of the emote model (`fnemotes_nearlycivilized_v2_l4d1`).
 
 **Original Version:** https://forums.alliedmods.net/showthread.php?t=318981
 
@@ -19,6 +19,15 @@ It will likely work in other games, but I can't guarantee that.
 - **`sm_setdances <#userid|name> [Emote ID]`** - Emote ID ***(ADMIN COMMAND)***;
 
 ## Changelog
+
+V2.4.0 (11/11/2026)
+
+- Added L4D1 support: third-person camera, survivor model that follows the dance, and an L4D1 copy of the emote model without the limb distortion ([#6](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/issues/6)). Based on foxhound's L4D1/2 version, with help from gvazdas.
+- The plugin now refuses to load on games other than L4D1/L4D2.
+- Fixed dances with an intro and a loop switching to another dance after the intro.
+- Hide the emote entity before it is removed, to avoid stuck shadows ([#5](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/issues/5)). Thanks to gvazdas.
+- Fixed possible errors when a player/bot leaves during an emote. Thanks to gvazdas.
+- Emote entity names no longer use random numbers, which could collide between players.
 
 V2.3.0 (09/10/2026)
 
