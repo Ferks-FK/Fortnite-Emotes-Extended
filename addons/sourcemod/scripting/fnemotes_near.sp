@@ -228,7 +228,7 @@ public Plugin myinfo =
     name = "[L4D1/L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK, gvazdas",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.4.0",
+    version = "2.4.1",
     url = "https://forums.alliedmods.net/showthread.php?t=318981"
 };
 
