@@ -253,6 +253,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     }
     RegPluginLibrary("fnemotes");
     CreateNative("fnemotes_IsClientEmoting", Native_IsClientEmoting);
+    CreateNative("fnemotes_StopEmote", Native_StopEmote);
     return APLRes_Success;
 }
 
@@ -310,7 +311,24 @@ public void OnPluginEnd()
 
 int Native_IsClientEmoting(Handle plugin, int numParams)
 {
-    return g_bClientDancing[GetNativeCell(1)];
+    int client = GetNativeCell(1);
+    if (client < 1 || client > MaxClients)
+        return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index %d", client);
+
+    return g_bClientDancing[client];
+}
+
+int Native_StopEmote(Handle plugin, int numParams)
+{
+    int client = GetNativeCell(1);
+    if (client < 1 || client > MaxClients)
+        return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index %d", client);
+
+    if (!g_bClientDancing[client])
+        return false;
+
+    StopEmote(client);
+    return true;
 }
 
 public void OnMapStart()
