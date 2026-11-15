@@ -486,10 +486,12 @@ public void L4D_OnFalling(int client)
 void Event_BotReplacePlayer(Event event, const char[] name, bool dontBroadcast)
 {
     int player = GetClientOfUserId(event.GetInt("player"));
-    StopEmote(player);
-
     int bot    = GetClientOfUserId(event.GetInt("bot"));
+    StopEmote(player);
     StopEmote(bot);
+    // Trying to make sure viewmodel is still there
+    if (IsValidClient(player)) SetEntProp(player, Prop_Send, "m_bDrawViewmodel", 1);
+    if (IsValidClient(bot))    SetEntProp(bot, Prop_Send, "m_bDrawViewmodel", 1);
 }
 
 void Event_PlayerVictim(Event event, const char[] name, bool dontBroadcast)
@@ -994,7 +996,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         DispatchKeyValue(EmoteEnt, "targetname", "emote");
         DispatchKeyValue(EmoteEnt, "model",      g_sModelPath);
         DispatchKeyValue(EmoteEnt, "solid",      "0");
-        DispatchKeyValue(EmoteEnt, "rendermode", "10"); // RENDER_NONE
+        //DispatchKeyValue(EmoteEnt, "rendermode", "10"); // RENDER_NONE
         DispatchKeyValue(EmoteEnt, "disableshadows", "0");
         DispatchKeyValue(EmoteEnt, "disablereceiveshadows", "0");
     
@@ -1020,7 +1022,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         g_iEmoteEnt[client] = EntIndexToEntRef(EmoteEnt);
 
         SetEntProp(client, Prop_Send, "m_fEffects",
-            GetEntProp(client,Prop_Send,"m_fEffects")|EF_BONEMERGE|EF_BONEMERGE_FASTCULL|EF_PARENT_ANIMATES|EF_NOSHADOW|EF_NORECEIVESHADOW);
+            GetEntProp(client,Prop_Send,"m_fEffects")|EF_BONEMERGE|EF_BONEMERGE_FASTCULL|EF_PARENT_ANIMATES);
 
         // Sound
         if (g_cvEmotesSounds.BoolValue && g_bSoundsCached && !StrEqual(soundName, ""))
@@ -1398,7 +1400,7 @@ void ResetCam(int client)
 {
     if (g_bL4D2)
         SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 0.0);
-    if (IsPlayerAlive(client) && GetEntProp(client, Prop_Send, "m_iObserverMode") == 1)
+    if ( IsPlayerAlive(client) && GetEntProp(client, Prop_Send, "m_iObserverMode")==1 )
     {
         // Don't touch the camera of a player who died during the emote.
         SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", -1);
