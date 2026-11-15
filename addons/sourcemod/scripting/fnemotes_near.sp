@@ -2,6 +2,7 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <colors>
+#include <left4dhooks>
 #undef REQUIRE_PLUGIN
 #include <adminmenu>
 
@@ -22,14 +23,6 @@
 
 #define FILE_MODEL_BASE      "models/player/kodua/fnemotes_nearlycivilized_v2"
 #define FILE_MODEL_BASE_L4D1 "models/player/kodua/fnemotes_nearlycivilized_v2_l4d1"
-
-enum L4DTeam
-{
-	L4DTeam_Unassigned  = 0,
-	L4DTeam_Spectator   = 1,
-	L4DTeam_Survivor    = 2,
-	L4DTeam_Infected    = 3
-}
 
 enum struct EmoteData
 {
@@ -222,8 +215,8 @@ public Plugin myinfo =
     name = "[L4D1/L4D2] Fortnite Emotes & Dances",
     author = "Kodua, Franc1sco franug, TheBO$$, Aleexxx, Foxhound, nearly civilized, Ferks-FK, gvazdas",
     description = "Animations from Fortnite in CS:GO/L4D2. New emotes ported by nearly civilized",
-    version = "2.4.2",
-    url = "https://forums.alliedmods.net/showthread.php?t=318981"
+    version = "2.4.3",
+    url = "https://github.com/Ferks-FK/Fortnite-Emotes-Extended, https://forums.alliedmods.net/showthread.php?t=318981"
 };
 
 // First thing that fires in the entire plugin lifecycle.
@@ -282,6 +275,7 @@ public void OnPluginStart()
     HookEvent("charger_pummel_start",       Event_PlayerVictim,     EventHookMode_Pre);
     }
 
+    HookEvent("player_spawn",               Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_death",               Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_hurt",                Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_falldamage",          Event_PlayerUserid,     EventHookMode_Pre);
@@ -446,12 +440,48 @@ public void OnClientDisconnect(int client)
             g_bEmoteCooldown[client] = false;
         }
     }
-    g_bHooked[client] = false;
+    if (client>0 && client<=MaxClients)
+        g_bHooked[client] = false;
 }
 
 // ============================================================
 // Events
 // ============================================================
+
+public void L4D2_OnStagger_Post(int client, int source)
+{
+    StopEmote(client);
+}
+
+public void L4D_OnMaterializeFromGhost(int client)
+{
+    StopEmote(client);
+}
+
+public void L4D2_OnPlayerFling_Post(int client, int attacker, const float vecDir[3])
+{
+    StopEmote(client);
+}
+
+public void L4D2_OnPounceOrLeapStumble_Post(int victim, int attacker)
+{
+    StopEmote(victim);
+}
+
+public void L4D_OnKnockedDown_Post(int client, int reason)
+{
+    StopEmote(client);
+}
+
+public void L4D2_OnThrowImpactedSurvivor_Post(int attacker, int victim)
+{
+    StopEmote(victim);
+}
+
+public void L4D_OnFalling(int client)
+{
+    StopEmote(client);
+}
 
 void Event_BotReplacePlayer(Event event, const char[] name, bool dontBroadcast)
 {
@@ -515,10 +545,19 @@ void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 }
 
 // Probably a good idea to avoid passing entities into the next level.
-// This might be too late. l4dhooks has a callback when entities are about to be saved.
 void Event_Transition(Event event, const char[] name, bool dontBroadcast)
 {
     OnPluginEnd();
+}
+public Action L4D1_OnSavingEntities(int info_changelevel, Address Kv)
+{
+    OnPluginEnd();
+    return Plugin_Continue;
+}
+public Action L4D2_OnSavingEntities(int info_changelevel)
+{
+    OnPluginEnd();
+    return Plugin_Continue;
 }
 
 Action BotTaunt(Handle timer, int client)
@@ -874,17 +913,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
 {
     if (!IsValidClient(client))
         return Plugin_Handled;
-
-    if (g_EmoteForward_Pre != null)
-    {
-        Action res = Plugin_Continue;
-        Call_StartForward(g_EmoteForward_Pre);
-        Call_PushCell(client);
-        Call_Finish(res);
-        if (res != Plugin_Continue)
-            return Plugin_Handled;
-    }
-
+    
     if (!IsPlayerAlive(client) || bIsPlayerIncapped(client))
     {
         CReplyToCommand(client, "%t", "MUST_BE_ALIVE");
@@ -897,8 +926,16 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         return Plugin_Handled;
     }
 
+    L4DTeam team = L4D_GetClientTeam(client);
+
+    if (!PlayerCanDance(client,team))
+    {
+        CReplyToCommand(client, "%t", "CANNOT_USE_NOW");
+        return Plugin_Handled;
+    }
+
     // 4 = Spitter, 5 = Jockey, 6 = Charger
-    if (g_bL4D2 && g_cvBlockNonHumanoid.BoolValue && L4D_GetClientTeam(client) == L4DTeam_Infected
+    if (g_bL4D2 && g_cvBlockNonHumanoid.BoolValue && team == L4DTeam_Infected
         && 4 <= GetEntProp(client, Prop_Send, "m_zombieClass") <= 6)
     {
         CReplyToCommand(client, "%t", "CLASS_CANNOT_EMOTE");
@@ -921,6 +958,16 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
     {
         CReplyToCommand(client, "%t", "AMIN_1_INVALID");
         return Plugin_Handled;
+    }
+
+    if (g_EmoteForward_Pre != null)
+    {
+        Action res = Plugin_Continue;
+        Call_StartForward(g_EmoteForward_Pre);
+        Call_PushCell(client);
+        Call_Finish(res);
+        if (res != Plugin_Continue)
+            return Plugin_Handled;
     }
 
     StopEmote(client);
@@ -947,7 +994,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         DispatchKeyValue(EmoteEnt, "targetname", "emote");
         DispatchKeyValue(EmoteEnt, "model",      g_sModelPath);
         DispatchKeyValue(EmoteEnt, "solid",      "0");
-        DispatchKeyValue(EmoteEnt, "rendermode", "10");
+        DispatchKeyValue(EmoteEnt, "rendermode", "10"); // RENDER_NONE
         DispatchKeyValue(EmoteEnt, "disableshadows", "0");
         DispatchKeyValue(EmoteEnt, "disablereceiveshadows", "0");
     
@@ -965,15 +1012,15 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         // Otherwise, starting the emote while moving keeps the camera bobbing.
         TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, {0.0,0.0,0.0});
 
-        if (!g_bL4D2 || L4D_GetClientTeam(client) == L4DTeam_Infected)
+        //if (!g_bL4D2 || team == L4DTeam_Infected)
             AttachSkin(client, EmoteEnt);
 
         SetVariantString("!activator");
         AcceptEntityInput(client, "SetParent", EmoteEnt);
         g_iEmoteEnt[client] = EntIndexToEntRef(EmoteEnt);
 
-        SetEntProp(client,Prop_Send,"m_fEffects",
-                   GetEntProp(client,Prop_Send,"m_fEffects")&EF_BONEMERGE&EF_NOSHADOW&EF_NORECEIVESHADOW&EF_BONEMERGE_FASTCULL&EF_PARENT_ANIMATES);
+        SetEntProp(client, Prop_Send, "m_fEffects",
+            GetEntProp(client,Prop_Send,"m_fEffects")|EF_BONEMERGE|EF_BONEMERGE_FASTCULL|EF_PARENT_ANIMATES|EF_NOSHADOW|EF_NORECEIVESHADOW);
 
         // Sound
         if (g_cvEmotesSounds.BoolValue && g_bSoundsCached && !StrEqual(soundName, ""))
@@ -1044,6 +1091,24 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
     }
 
     return Plugin_Handled;
+}
+
+stock bool PlayerCanDance(const int client, L4DTeam team)
+{
+    if (bIsPlayerIncapped(client)) return false;
+    if (team==L4DTeam_Survivor)
+    {
+        if (GetEntPropEnt(client, Prop_Send, "m_pounceAttacker")>0) return false;
+        if (GetEntPropEnt(client, Prop_Send, "m_tongueOwner")>0) return false;
+        if (g_bL4D2)
+        {
+            if (GetEntPropEnt(client, Prop_Send, "m_pummelAttacker")>0) return false;
+            if (GetEntPropEnt(client, Prop_Send, "m_carryAttacker")>0) return false;
+            if (GetEntPropEnt(client, Prop_Send, "m_jockeyAttacker")>0) return false;
+        }
+    }
+    if (L4D_IsPlayerStaggering(client)) return false;
+    return true;
 }
 
 // ============================================================
@@ -1282,9 +1347,9 @@ Action SetTransmit(int entity, int client)
 
 void SetCam(int client)
 {
-    if (g_bL4D2 && L4D_GetClientTeam(client) != L4DTeam_Infected)
-        SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 99999.3);
-    else if (!IsPinning(client))
+    //if (g_bL4D2 && L4D_GetClientTeam(client) != L4DTeam_Infected)
+    //    SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 99999.3);
+    if (!IsPinning(client))
     {
         // L4D1 has no third-person view, and L4D2 infected ignore it.
         SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", 0);
@@ -1357,9 +1422,11 @@ void AttachSkin(int client, int emoteEnt)
         return;
 
     DispatchKeyValue(skin, "model", model);
+    DispatchKeyValue(skin, "disableshadows", "0");
+    DispatchKeyValue(skin, "disablereceiveshadows", "0");
     DispatchSpawn(skin);
     SetEntProp(skin, Prop_Send, "m_fEffects",
-        GetEntProp(skin, Prop_Send, "m_fEffects")&EF_BONEMERGE&EF_BONEMERGE_FASTCULL&EF_PARENT_ANIMATES&~EF_NORECEIVESHADOW&~EF_NOSHADOW);
+        GetEntProp(skin, Prop_Send, "m_fEffects")|EF_BONEMERGE|EF_PARENT_ANIMATES);
     SetVariantString("!activator");
     AcceptEntityInput(skin, "SetParent", emoteEnt, skin);
 
@@ -1592,13 +1659,6 @@ stock bool IsValidClient(int client, bool replaycheck = true)
         return false;
         
     return true;
-}
-
-stock L4DTeam L4D_GetClientTeam(int client)
-{
-	int team = GetClientTeam(client);
-
-	return view_as<L4DTeam>(team);
 }
 
 float GetSurvivorModelScale(int client)
