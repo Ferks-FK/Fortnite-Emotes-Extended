@@ -189,7 +189,8 @@ ConVar  g_cvHidePlayers,
         g_cvEmotesSounds,
         g_cvHideWeapons,
         g_cvTeleportBack,
-        g_cvBlockNonHumanoid;
+        g_cvBlockNonHumanoid,
+        g_cvUpdateModel;
 
 int   g_iEmoteEnt[MAXPLAYERS+1] =      {INVALID_ENT_REFERENCE,...}; // Main emote entity, client is parented to it so the client doesn't see the dance.
 int   g_iWeaponHandEnt[MAXPLAYERS+1] = {INVALID_ENT_REFERENCE,...};
@@ -211,7 +212,8 @@ bool  g_bClientDancing[MAXPLAYERS+1],
 float  g_fLastAngles[MAXPLAYERS+1][3],
        g_fLastPosition[MAXPLAYERS+1][3];
 
-// CSM, Lux's Model Changer compatibility
+// Character Select Menu, Lux's Model Changer compatibility
+// See cvar sm_emotes_updatemodel
 Handle g_hModelTimer[MAXPLAYERS+1];
 int    g_iModelIndex[MAXPLAYERS+1];
 
@@ -313,6 +315,7 @@ public void OnPluginStart()
     g_cvTeleportBack  = CreateConVar("sm_emotes_teleportonend",     "1",    "Teleport back to the exact position when he started to dance.", FCVAR_NOTIFY);
     g_cvSpeed         = CreateConVar("sm_emotes_speed",             "0.84", "Sets the playback speed of the animation.", FCVAR_PROTECTED);
     g_cvBlockNonHumanoid = CreateConVar("sm_emotes_block_nonhumanoid", "1", "L4D2: block emotes for Spitter, Jockey and Charger (their skeletons can't play the dances).", FCVAR_NOTIFY);
+    g_cvUpdateModel = CreateConVar("sm_emotes_updatemodel",            "0", "Update dancing player model (CSM, Lux Model Changer).", FCVAR_NOTIFY);
 
     TopMenu topmenu;
     if (LibraryExists("adminmenu") && ((topmenu = GetAdminTopMenu()) != null))
@@ -328,6 +331,11 @@ public void OnPluginEnd()
 {
     for (int i = 1; i <= MaxClients; i++)
         StopEmote(i);
+}
+
+public void OnAllPluginsLoaded()
+{
+    g_bL4DD = LibraryExists("left4dhooks");
 }
 
 public void OnLibraryAdded(const char[] name)
@@ -1138,9 +1146,12 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
 
     g_bClientDancing[client] = true;
 
-    // Support: CSM, Lux's Model Changer, etc.
-    g_iModelIndex[client] = GetEntProp(client, Prop_Send, "m_nModelIndex");
-    g_hModelTimer[client] = CreateTimer(0.1,UpdatePlayerModel,client,TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+    if (g_cvUpdateModel.BoolValue)
+    {
+        // Support: CSM, Lux's Model Changer, etc.
+        g_iModelIndex[client] = GetEntProp(client, Prop_Send, "m_nModelIndex");
+        g_hModelTimer[client] = CreateTimer(0.1,UpdatePlayerModel,client,TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+    }
 
     if (g_cvHidePlayers.BoolValue)
     {
@@ -1273,7 +1284,6 @@ void StopEmote(int client)
     if (client<=0 || client>MaxClients) return;
 
     g_bClientDancing[client] = false;
-    g_iModelIndex[client] = 0;
     g_hModelTimer[client] = null;
     
     if (g_iEmoteEnt[client]==INVALID_ENT_REFERENCE) return;
@@ -1320,7 +1330,6 @@ void TerminateEmote(int client)
     if (client<=0 || client>MaxClients) return;
 
     g_bClientDancing[client] = false;
-    g_iModelIndex[client] = 0;
     g_hModelTimer[client] = null;
 
     if (g_iEmoteEnt[client]==INVALID_ENT_REFERENCE) return;
@@ -1536,11 +1545,11 @@ stock void AttachSkin(int client, int emoteEnt, L4DTeam team)
 {
     RemoveSkin(client);
 
-    static char model[PLATFORM_MAX_PATH];
-    GetClientModel(client,model,PLATFORM_MAX_PATH);
-
     int skin = CreateEntityByName("commentary_dummy");
     if (skin<=0 || !IsValidEntity(skin)) return;
+
+    static char model[PLATFORM_MAX_PATH];
+    GetClientModel(client,model,PLATFORM_MAX_PATH);
 
     bool ghost = team==L4DTeam_Infected && GetEntProp(client, Prop_Send, "m_isGhost");
 
