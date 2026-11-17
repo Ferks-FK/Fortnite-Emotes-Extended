@@ -181,7 +181,6 @@ Handle  CooldownTimers[MAXPLAYERS+1],
         g_EmoteForward,
         g_EmoteForward_Pre;
 
-
 ConVar  g_cvHidePlayers,
         g_cvFlagEmotesMenu,
         g_cvFlagDancesMenu,
@@ -267,7 +266,8 @@ public void OnPluginStart()
     RegConsoleCmd("sm_doemote",   Command_Do_Emotes,   "[SM] Usage: sm_doemote [Emote ID]"); // -1 to StopEmote
     RegConsoleCmd("sm_dodance",   Command_Do_Emotes,   "[SM] Usage: sm_dodance [Emote ID]"); // -1 to StopEmote
     RegAdminCmd("sm_danceall",    Command_Force_Emote, ADMFLAG_GENERIC, "Forces all players to dance");
-    // Could add RegAdminCmd "sm_stopemote" but "sm_setemotes <users> -1" is already capable of that.
+    RegConsoleCmd("sm_stopemote", Command_Stop);
+    RegConsoleCmd("sm_stopdance", Command_Stop);
 
     HookEvent("drag_begin",                 Event_PlayerSubject,    EventHookMode_Pre);
 
@@ -605,6 +605,12 @@ Action Timer_ResetMovetype(Handle timer, any client)
 // ============================================================
 // Commands
 // ============================================================
+
+Action Command_Stop(int client, int args)
+{
+    StopEmote(client);
+    return Plugin_Handled;
+}
 
 Action Command_Menu(int client, int args)
 {
@@ -962,7 +968,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
     if (!g_bMapStarted || !IsValidClient(client))
         return Plugin_Handled;
     
-    if (!IsPlayerAlive(client) || bIsPlayerIncapped(client))
+    if (!IsPlayerAlive(client))
     {
         CReplyToCommand(client, "%t", "MUST_BE_ALIVE");
         return Plugin_Handled;
@@ -1039,13 +1045,13 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
     g_fLastPosition[client] = vec;
     g_fLastAngles[client]   = ang;
 
-    DispatchKeyValue(EmoteEnt, "targetname", "emote");
-    DispatchKeyValue(EmoteEnt, "model",      g_sModelPath);
-    DispatchKeyValue(EmoteEnt, "solid",      "0");
-    DispatchKeyValue(EmoteEnt, "rendermode", "10"); // Don't Render
-    DispatchKeyValue(EmoteEnt, "disableshadows", "1");
+    DispatchKeyValue(EmoteEnt, "targetname",            "emote");
+    DispatchKeyValue(EmoteEnt, "model",                 g_sModelPath);
+    DispatchKeyValue(EmoteEnt, "solid",                 "0");
+    DispatchKeyValue(EmoteEnt, "rendermode",            "10"); // Don't Render
+    DispatchKeyValue(EmoteEnt, "disableshadows",        "1");
     DispatchKeyValue(EmoteEnt, "disablereceiveshadows", "1");
-    DispatchKeyValue(EmoteEnt, "disableshadowdepth", "1");
+    DispatchKeyValue(EmoteEnt, "disableshadowdepth",    "1");
 
     ActivateEntity(EmoteEnt);
     DispatchSpawn(EmoteEnt);
@@ -1125,7 +1131,7 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
     SetVariantString(anim1);
     AcceptEntityInput(EmoteEnt, "SetAnimation", -1, -1, 0);
 
-    SetCam(client);
+    SetCam(client,team);
 
     if (g_cvSpeed.FloatValue != 1.0)
         SetEntPropFloat(EmoteEnt, Prop_Send, "m_flPlaybackRate", g_cvSpeed.FloatValue);
@@ -1170,10 +1176,8 @@ stock Action UpdatePlayerModel(Handle timer, int client)
     if (!IsValidClient(client)) { StopEmote(client); return Plugin_Stop; }
     int index = GetEntProp(client, Prop_Send, "m_nModelIndex");
     if (g_iModelIndex[client] == index) return Plugin_Continue;
-    if (!IsValidEntRef(g_iEmoteEnt[client])) { StopEmote(client); return Plugin_Stop; }
     int emote = EntRefToEntIndex(g_iEmoteEnt[client]);
     if (emote<=0 || !IsValidEntity(emote)) { StopEmote(client); return Plugin_Stop; }
-    if (!IsValidEntRef(g_iSkinEnt[client])) { StopEmote(client); return Plugin_Stop; }
     int skin = EntRefToEntIndex(g_iSkinEnt[client]);
     if (skin<=0 || !IsValidEntity(skin)) { StopEmote(client); return Plugin_Stop; }
     SetEntProp(skin, Prop_Send, "m_nModelIndex", index);
@@ -1215,7 +1219,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse)
     }
     if (buttons && (buttons&~ALLOWEDBUTTONS)>0)
     {
-        // Stop Emote but block non-allowed buttons this frame.
+        // Stop Emote and block non-allowed buttons this frame.
         StopEmote(client);
         buttons &= ALLOWEDBUTTONS;
         int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
@@ -1248,14 +1252,15 @@ void StartLoopAnimation(const char[] output, int caller, int activator, float de
         SetEntPropFloat(caller, Prop_Send, "m_flPlaybackRate", g_cvSpeed.FloatValue);
 }
 
+// Return -1 on failure, client index otherwise. Client is not validated.
 int GetEmoteActivator(int iEntRefDancer)
 {
     if (iEntRefDancer == INVALID_ENT_REFERENCE)
-        return 0;
+        return -1;
     for (int i = 1; i <= MaxClients; i++)
         if (g_iEmoteEnt[i] == iEntRefDancer)
             return i;
-    return 0;
+    return -1;
 }
 
 // ============================================================
@@ -1275,13 +1280,13 @@ void StopEmote(int client)
 
     bool valid_client = IsValidClient(client); // Emote entity can in principle exist without valid client.
 
-    int iEmoteEnt = EntRefToEntIndex(g_iEmoteEnt[client]);
-    if (iEmoteEnt && iEmoteEnt != INVALID_ENT_REFERENCE && iEmoteEnt>0 && IsValidEntity(iEmoteEnt))
+    int iEmoteEnt = EntRefToEntIndex(g_iEmoteEnt[client]); // INVALID_ENT_REFERENCE is -1
+    if (iEmoteEnt>0 && IsValidEntity(iEmoteEnt))
     {
         // https://forums.alliedmods.net/showthread.php?t=212872
         if (g_bL4D2) SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
         if (valid_client) AcceptEntityInput(client, "ClearParent");
-        CleanRemoveEntity(g_iEmoteEnt[client]);
+        CleanRemoveEntity(iEmoteEnt);
         if (valid_client && g_cvTeleportBack.BoolValue)
             TeleportEntity(client, g_fLastPosition[client], g_fLastAngles[client], NULL_VECTOR);
     }
@@ -1322,20 +1327,22 @@ void TerminateEmote(int client)
 
     bool valid_client = IsValidClient(client); // Emote entity can in principle exist without valid client.
 
-    if (valid_client) RemoveSkin(client);
-
     int iEmoteEnt = EntRefToEntIndex(g_iEmoteEnt[client]);
-    if (iEmoteEnt && iEmoteEnt != INVALID_ENT_REFERENCE && iEmoteEnt>0 && IsValidEntity(iEmoteEnt))
+    if (iEmoteEnt>0 && IsValidEntity(iEmoteEnt))
     {
         // https://forums.alliedmods.net/showthread.php?t=212872
         if (g_bL4D2) SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
         if (valid_client) AcceptEntityInput(client, "ClearParent");
-        CleanRemoveEntity(g_iEmoteEnt[client]);
+        CleanRemoveEntity(iEmoteEnt);
     }
     
     g_iEmoteEnt[client] = INVALID_ENT_REFERENCE;
 
-    if (valid_client) StopEmoteSound(client);
+    if (valid_client)
+    {
+        RemoveSkin(client);
+        StopEmoteSound(client);
+    }
 }
 
 // ============================================================
@@ -1404,7 +1411,7 @@ void WeaponUnblock(int client)
     {
         // Only restore a weapon the player still owns, otherwise the game picks the next one.
         int iEnt = EntRefToEntIndex(g_iWeaponHandEnt[client]);
-        if (iEnt != INVALID_ENT_REFERENCE && GetEntPropEnt(iEnt, Prop_Send, "m_hOwner") == client)
+        if (iEnt>0 && IsValidEntity(iEnt) && GetEntPropEnt(iEnt, Prop_Send, "m_hOwner") == client)
             SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", iEnt);
     }
 
@@ -1432,11 +1439,11 @@ Action SetTransmit(int entity, int client)
 // Camera
 // ============================================================
 
-void SetCam(int client)
+void SetCam(int client, L4DTeam team)
 {
-    if (g_bL4D2 && L4D_GetClientTeam(client) != L4DTeam_Infected)
+    if (g_bL4D2 && team!=L4DTeam_Infected)
         SetEntPropFloat(client, Prop_Send, "m_TimeForceExternalView", 99999.3);
-    else if (!IsPinning(client))
+    else if (!IsPinning(client,team))
     {
         // L4D1 has no third-person view, and L4D2 infected ignore it.
         SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", client);
@@ -1446,11 +1453,39 @@ void SetCam(int client)
     SetEntProp(client, Prop_Send, "m_iHideHUD", GetEntProp(client, Prop_Send, "m_iHideHUD") | HIDEHUD_CROSSHAIR);
 }
 
-// The game already shows a Hunter/Smoker in third person while pinning someone.
-bool IsPinning(int client)
+// The game already shows a Hunter/Smoker/Charger/Jockey in third person while pinning someone.
+// Shamelessly stolen from lef4dhooks_silver.inc
+bool IsPinning(int client, L4DTeam team)
 {
-    return GetEntPropEnt(client, Prop_Send, "m_pounceVictim") > 0
-        || GetEntPropEnt(client, Prop_Send, "m_tongueVictim") > 0;
+    if (team!=L4DTeam_Infected) return false;
+    if (!IsPlayerAlive(client)) return false;
+    if (GetEntProp(client,Prop_Send,"m_isGhost")) return false;
+    int class = GetEntProp(client, Prop_Send, "m_zombieClass");
+	int victim;
+	if(g_bL4D2)
+	{
+		switch(class)
+		{
+			case 1:		victim = GetEntPropEnt(client, Prop_Send, "m_tongueVictim");
+			case 3:		victim = GetEntPropEnt(client, Prop_Send, "m_pounceVictim");
+			case 5:		victim = GetEntPropEnt(client, Prop_Send, "m_jockeyVictim");
+			case 6:
+			{
+				        victim = GetEntPropEnt(client, Prop_Send, "m_pummelVictim");
+		   if(victim<1) victim = GetEntPropEnt(client, Prop_Send, "m_carryVictim");
+			}
+		}
+	}
+	else
+	{
+		switch(class)
+		{
+			case 1:		victim = GetEntPropEnt(client, Prop_Send, "m_tongueVictim");
+			case 3:		victim = GetEntPropEnt(client, Prop_Send, "m_pounceVictim");
+		}
+	}
+	if(victim>0) return true;
+    return false;
 }
 
 // Emoting during a throw sends the rock in the wrong direction.
@@ -1507,16 +1542,18 @@ stock void AttachSkin(int client, int emoteEnt, L4DTeam team)
     int skin = CreateEntityByName("commentary_dummy");
     if (skin<=0 || !IsValidEntity(skin)) return;
 
+    bool ghost = team==L4DTeam_Infected && GetEntProp(client, Prop_Send, "m_isGhost");
+
     DispatchKeyValue(skin, "model", model);
-    DispatchKeyValue(skin, "disableshadows", "0");
-    DispatchKeyValue(skin, "disablereceiveshadows", "0");
-    DispatchKeyValue(skin, "disableshadowdepth", "0");
+    DispatchKeyValue(skin, "disableshadows",        ghost ? "1" : "0");
+    DispatchKeyValue(skin, "disablereceiveshadows", ghost ? "1" : "0");
+    DispatchKeyValue(skin, "disableshadowdepth",    ghost ? "1" : "0");
+    DispatchKeyValue(skin, "DisableBoneFollowers",  "1"); // Save edicts
     DispatchSpawn(skin);
     SetVariantString("!activator");
     AcceptEntityInput(skin, "SetParent", emoteEnt, skin);
 
     SetEntPropEnt(skin, Prop_Send, "m_hOwnerEntity", client);
-    SDKHook(skin, SDKHook_SetTransmit, Skin_SetTransmit);
 
     g_iSkinEnt[client] = EntIndexToEntRef(skin);
     SetEntityRenderMode(client, RENDER_TRANSALPHA);
@@ -1526,21 +1563,20 @@ stock void AttachSkin(int client, int emoteEnt, L4DTeam team)
     effects |= EF_BONEMERGE|EF_PARENT_ANIMATES;
 
     // Ghosts shouldn't emit shadows, and they should look spooky
-    if (team==L4DTeam_Infected && GetEntProp(client, Prop_Send, "m_isGhost"))
+    if (ghost)
     {
         effects |= EF_NOSHADOW|EF_NORECEIVESHADOW;
         SetEntityRenderMode(skin, RENDER_TRANSALPHA);
         SetEntityRenderColor(skin, 255, 255, 255, 100);
+        SDKHook(skin, SDKHook_SetTransmit, Skin_SetTransmitGhost);
     }
     SetEntProp(skin, Prop_Send, "m_fEffects", effects);
 }
 
 // Survivors can't see ghosts, so they can't see a ghost dancing either.
-Action Skin_SetTransmit(int skin, int viewer)
+Action Skin_SetTransmitGhost(int skin, int viewer)
 {
-    int owner = GetEntPropEnt(skin, Prop_Send, "m_hOwnerEntity");
-    if (IsValidClient(owner) && GetEntProp(owner, Prop_Send, "m_isGhost")
-        && L4D_GetClientTeam(viewer) == L4DTeam_Survivor)
+    if (L4D_GetClientTeam(viewer)==L4DTeam_Survivor)
         return Plugin_Handled;
     return Plugin_Continue;
 }
@@ -1551,10 +1587,8 @@ void RemoveSkin(int client)
         return;
 
     int skin = EntRefToEntIndex(g_iSkinEnt[client]);
-    if (skin && skin != INVALID_ENT_REFERENCE && skin>0 && IsValidEntity(skin))
-    {
-        CleanRemoveEntity(g_iSkinEnt[client]);
-    }
+    if (skin>0 && IsValidEntity(skin))
+        CleanRemoveEntity(skin);
 
     g_iSkinEnt[client] = INVALID_ENT_REFERENCE;
     
@@ -1778,44 +1812,22 @@ float GetSurvivorModelScale(int client)
     return 1.0; // Nick, Bill, Francis, Louis
 }
 
-#define DELAY_KILL 0.1 // Previously we used 1.0 seconds
+// Entity,Input,Parameter,Delay,OnlyOnce
+#define KILLCOMMAND "!self,Kill,,0.1,-1"
 
 // Stop drawing entity, send packets to all clients, then kill 0.1 seconds later.
-stock void CleanRemoveEntity(const int entref)
+stock void CleanRemoveEntity(const int entity)
 {
-    if (!IsValidEntRef(entref)) return;
-    int entity = EntRefToEntIndex(entref);
-    if (entity<=0 || !IsValidEntity(entity)) return;
-    SetEntProp(entity,Prop_Send,"m_fEffects",GetEntProp(entity,Prop_Send,"m_fEffects")|EF_NODRAW|EF_NOSHADOW|EF_NORECEIVESHADOW);
+    SetEntProp(entity,Prop_Send,"m_fEffects",
+        GetEntProp(entity,Prop_Send,"m_fEffects")|EF_NODRAW|EF_NOSHADOW|EF_NORECEIVESHADOW);
     SetEntityRenderMode(entity, view_as<RenderMode>(RENDER_NONE));
     SET_TRANSMIT_ALWAYS(entity);
-    CreateTimer(DELAY_KILL,Timer_Remove,entref,TIMER_FLAG_NO_MAPCHANGE);
-}
-
-// Kill
-stock Action Timer_Remove(Handle timer, const int entref)
-{
-    NextFrame_Remove(entref);
-    return Plugin_Stop;
-}
-
-// Kill
-stock void NextFrame_Remove(const int entref)
-{
-    if (!IsValidEntRef(entref)) return;
-    int entity = EntRefToEntIndex(entref);
-    if (entity<=0 || !IsValidEntity(entity)) return;
-    AcceptEntityInput(entity,"Kill");
+    DispatchKeyValue(entity, "OnUser1", KILLCOMMAND);
+    AcceptEntityInput(entity, "FireUser1");
 }
 
 // Transmit to all clients always. Skips SetTransmit completely.
 stock void SET_TRANSMIT_ALWAYS(int entity)
 {
-    int flags = GetEdictFlags(entity);
-    SetEdictFlags(entity, flags | FL_EDICT_ALWAYS);
-}
-
-stock bool IsValidEntRef(const int ref)
-{
-	return ref && ref!=INVALID_ENT_REFERENCE && EntRefToEntIndex(ref) != INVALID_ENT_REFERENCE;
+    SetEdictFlags(entity, GetEdictFlags(entity)|FL_EDICT_ALWAYS);
 }
