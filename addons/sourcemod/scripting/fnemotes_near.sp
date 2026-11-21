@@ -286,7 +286,7 @@ public void OnPluginStart()
     HookEvent("player_hurt",                Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_falldamage",          Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_incapacitated",       Event_PlayerUserid,     EventHookMode_Pre);
-    HookEvent("player_shoved",              Event_PlayerUserid,     EventHookMode_Pre);
+    HookEvent("player_shoved",              Event_PlayerShoved,     EventHookMode_Pre);
     HookEvent("player_now_it",              Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_blind",               Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_ledge_grab",          Event_PlayerUserid,     EventHookMode_Pre);
@@ -374,12 +374,6 @@ public void OnMapStart()
 
     g_bMapStarted = true;
 
-    if (!FastDL())
-    {
-        LogMessage("WARNING: sv_allowdownload and sv_downloadurl not configured");
-        return;
-    }
-
     AddFileToDownloadsTable(g_sModelPath);
 
     FormatEx(path, sizeof(path), "%s.vvd", base);
@@ -401,8 +395,6 @@ public void OnConfigsExecuted()
     if (!g_cvEmotesSounds.BoolValue)
         return;
 
-    bool fastdl = FastDL();
-
     char sound[64];
     for (int i = 0; i < EMOTES_COUNT; i++)
     {
@@ -414,10 +406,10 @@ public void OnConfigsExecuted()
                 char sounds[8][64];
                 int count = ExplodeString(sound, ",", sounds, sizeof(sounds), sizeof(sounds[]));
                 for (int j = 0; j < count; j++)
-                    PrecacheEmoteSound(sounds[j],fastdl);
+                    PrecacheEmoteSound(sounds[j]);
             }
             else
-                PrecacheEmoteSound(sound,fastdl);
+                PrecacheEmoteSound(sound);
         }
     }
     for (int i = 0; i < DANCES_COUNT; i++)
@@ -430,17 +422,17 @@ public void OnConfigsExecuted()
                 char sounds[8][64];
                 int count = ExplodeString(sound, ",", sounds, sizeof(sounds), sizeof(sounds[]));
                 for (int j = 0; j < count; j++)
-                    PrecacheEmoteSound(sounds[j],fastdl);
+                    PrecacheEmoteSound(sounds[j]);
             }
             else
-                PrecacheEmoteSound(sound,fastdl);
+                PrecacheEmoteSound(sound);
         }
     }
     g_bSoundsCached = true;
 }
 
 // Precache a single emote sound, skipping missing files.
-void PrecacheEmoteSound(const char[] soundName, bool fastdl = true)
+void PrecacheEmoteSound(const char[] soundName)
 {
     char fullPath[PLATFORM_MAX_PATH];
     FormatEx(fullPath, sizeof(fullPath), "%s%s.mp3", SOUND_BASE_FULL, soundName);
@@ -450,7 +442,7 @@ void PrecacheEmoteSound(const char[] soundName, bool fastdl = true)
         return;
     }
     
-    if (fastdl) AddFileToDownloadsTable(fullPath);
+    AddFileToDownloadsTable(fullPath);
 
     char precachePath[PLATFORM_MAX_PATH];
     FormatEx(precachePath, sizeof(precachePath), "%s%s.mp3", SOUND_BASE_PATH, soundName);
@@ -549,6 +541,15 @@ void Event_PlayerSubject(Event event, const char[] name, bool dontBroadcast)
 void Event_PlayerUserid(Event event, const char[] name, bool dontBroadcast)
 {
     int victim = GetClientOfUserId(event.GetInt("userid"));
+    StopEmote(victim);
+}
+
+// Teammates can shove a dancing player without stopping the emote.
+void Event_PlayerShoved(Event event, const char[] name, bool dontBroadcast)
+{
+    int victim = GetClientOfUserId(event.GetInt("userid"));
+    int attacker = GetClientOfUserId(event.GetInt("attacker"));
+    if (victim && attacker && GetClientTeam(victim) == GetClientTeam(attacker)) return;
     StopEmote(victim);
 }
 
@@ -1090,18 +1091,6 @@ Action CreateEmote(int client, const char[] anim1, const char[] anim2, const cha
         float flScale = GetSurvivorModelScale(model);
         if (flScale != 1.0) SetEntPropFloat(EmoteEnt,Prop_Send,"m_flModelScale",flScale);
     }
-
-    // // Give AABB so prop cannot fall through the map.
-    // float mins[3],maxs[3];
-    // GetEntPropVector(client,   Prop_Send, "m_vecMins", mins);
-    // GetEntPropVector(client,   Prop_Send, "m_vecMaxs", maxs);
-    // SetEntPropVector(EmoteEnt, Prop_Send, "m_vecMins", mins);
-    // SetEntPropVector(EmoteEnt, Prop_Send, "m_vecMaxs", maxs);
-
-    // // Activate collisions and gravity.
-    // SetEntProp(EmoteEnt, Prop_Send, "m_CollisionGroup", 5); // COLLISION_GROUP_PLAYER
-    // SetEntityMoveType(EmoteEnt, MOVETYPE_FLYGRAVITY);
-    // SetEntityGravity(EmoteEnt, 1.0);
 
     // gvazdas: this is to avoid PVS related issues when a prop_dynamic_ornament or any other entity is parented to the client
     // If not set this results in very inconsistent visibility/networking in the Parent/Child hierarchy downstream
@@ -1763,30 +1752,11 @@ Action OnTrigger(int entity, int other)
 // Utilities
 // ============================================================
 
-// See if server has fast dl to let clients download content.
-stock bool FastDL()
-{
-    ConVar allowdownload = FindConVar("sv_allowdownload");
-    if (allowdownload && allowdownload.BoolValue)
-    {
-        ConVar g_hDownloadUrl = FindConVar("sv_downloadurl");
-        if (g_hDownloadUrl)
-        {
-            char currentUrl[4];
-            g_hDownloadUrl.GetString(currentUrl,sizeof(currentUrl));
-            TrimString(currentUrl);
-            if (currentUrl[0]!=0) return true;
-        }
-    }
-    return false;
-}
 
 // Check if client is on valid ground for emoting.
 stock bool ClientValidGround(int client)
 {
-    //return true;
     return GetEntityFlags(client)&FL_ONGROUND;
-    //return GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == 0;
 }
 
 void AddTranslatedMenuItem(Menu menu, const char[] opt, const char[] phrase, int client)
