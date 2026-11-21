@@ -25,11 +25,26 @@ python tools/make_l4d1_model.py
 - **`sm_rdance`** - Performs a random dance/emote.
 - **`sm_doemote`** - Permform a specific dance/emote.
 - **`sm_dodance`** - Permform a specific dance/emote.
+- **`sm_stopemote`** / **`sm_stopdance`** - Stop your current dance/emote.
 - **`sm_danceall`** - Force all players to dance. ***(ADMIN COMMAND)***
 - **`sm_setemotes <#userid|name> [Emote ID]`** - Emote ID ***(ADMIN COMMAND)***;
 - **`sm_setdances <#userid|name> [Emote ID]`** - Emote ID ***(ADMIN COMMAND)***;
 
+Emote ID `-1` stops the current dance/emote.
+
+[Left 4 DHooks](https://forums.alliedmods.net/showthread.php?t=321696) is optional. With it, emotes also stop when the player is staggered or flung.
+
 ## Changelog
+
+V2.5.0 (21/11/2026)
+
+- The player's own model now plays the dance, so other players see it with its skin and attachments.
+- Emotes now stop when the player is pinned by a special infected, incapacitated, hangs from a ledge, gets vomited on, steps in spit, takes fall damage, leaves the ground, is shoved by an enemy or changes model.
+- Pressing a button other than movement stops the emote.
+- Added `sm_stopemote` / `sm_stopdance`, and Emote ID `-1` stops the emote.
+- Added the `fnemotes_StopEmote` native.
+- Fixed entities attached to a dancing player warping to the map origin.
+- Thanks to gvazdas ([PR](https://github.com/Ferks-FK/Fortnite-Emotes-Extended/pull/15)).
 
 V2.4.1 (14/11/2026)
 
