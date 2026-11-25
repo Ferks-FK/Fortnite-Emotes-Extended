@@ -415,7 +415,7 @@ public void OnPluginStart()
     FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
     g_cvMaxDancers = CreateConVar("sm_emotes_max", "50",
-    "Maximum simultaneous emotes/dances.",
+    "Maximum entities emoting/dancing simultaneously.",
     FCVAR_NOTIFY, true, 0.0, true, MAXDANCERS*1.0);
 
     TopMenu topmenu;
@@ -1849,6 +1849,16 @@ Action CreateEmote(int ent, int amount)
             SetEntProp(skin,Prop_Send,"m_fEffects",effects);
 
             g_Dancers[dancer].skinRef = EntIndexToEntRef(skin);
+
+            // Clone color, skin, body
+            if (!ghost)
+            {
+                int r, g, b, a;
+                GetEntityRenderColor(ent,r,g,b,a);
+                SetEntityRenderColor(skin,r,g,b,a);
+            }
+            SetEntProp(skin, Prop_Send, "m_nBody",GetEntProp(ent, Prop_Send, "m_nBody"));
+            SetEntProp(skin, Prop_Send, "m_nSkin",GetEntProp(ent, Prop_Send, "m_nSkin"));
         }
         else
         {
@@ -2153,7 +2163,7 @@ void StopEmote(int ent)
         SetEntProp(ent, Prop_Send, "m_nSequence", seq);
         SetEntPropFloat(ent, Prop_Send, "m_flCycle", cycle);
         SetEntPropFloat(ent, Prop_Send, "m_flPlaybackRate", 1.0);
-        ChangeEdictState(ent, 0);
+        ChangeEdictState(ent);
         SDKHooks_TakeDamage(ent, 0, 0, 0.0, DMG_GENERIC);
     }
 
