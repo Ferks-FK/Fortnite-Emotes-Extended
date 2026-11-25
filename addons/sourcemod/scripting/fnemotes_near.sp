@@ -1960,12 +1960,12 @@ stock bool CanInfectedDance(int ent)
         //LogMessage("CanInfectedDance health");
         return false;
     }
-    if (GetEntProp(ent,Prop_Send,"m_iRequestedWound1")>0) // prevent crash
+    if (g_bL4D2 && GetEntProp(ent,Prop_Send,"m_iRequestedWound1")>0) // prevent crash. this can be removed if proper bonemerge is solved
     {
         //LogMessage("CanInfectedDance m_iRequestedWound1");
         return false;
     }
-    if (GetEntProp(ent,Prop_Send,"m_iRequestedWound2")>0) // prevent crash
+    if (g_bL4D2 && GetEntProp(ent,Prop_Send,"m_iRequestedWound2")>0) // prevent crash. this can be removed if proper bonemerge is solved
     {
         //LogMessage("CanInfectedDance m_iRequestedWound2");
         return false;
