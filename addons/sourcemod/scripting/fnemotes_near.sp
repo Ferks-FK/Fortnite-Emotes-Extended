@@ -1960,6 +1960,16 @@ stock bool CanInfectedDance(int ent)
         //LogMessage("CanInfectedDance health");
         return false;
     }
+    if (GetEntProp(ent,Prop_Send,"m_iRequestedWound1")>0) // prevent crash
+    {
+        //LogMessage("CanInfectedDance m_iRequestedWound1");
+        return false;
+    }
+    if (GetEntProp(ent,Prop_Send,"m_iRequestedWound2")>0) // prevent crash
+    {
+        //LogMessage("CanInfectedDance m_iRequestedWound2");
+        return false;
+    }
     if (g_bSurvivorsLost) return true;
     if (g_bFinale) return false;
     if (g_bL4DD && L4D_IsSurvivalMode()) return false;
