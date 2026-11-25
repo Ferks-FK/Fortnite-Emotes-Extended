@@ -462,14 +462,14 @@ void SpawnPost(int entity)
         {
             if (g_cvProbabilityInfected.FloatValue>=1.0 || g_cvProbabilityInfected.FloatValue>=GetRandomFloat())
             {
-                CreateTimer(GetRandomFloat(0.1,0.5),Timer_RandomDance,EntIndexToEntRef(entity),TIMER_FLAG_NO_MAPCHANGE);
+                CreateTimer(GetRandomFloat(0.25,0.5),Timer_RandomDance,EntIndexToEntRef(entity),TIMER_FLAG_NO_MAPCHANGE);
             }
         }
         case EMOTECLASS_WITCH:
         {
             if (g_cvProbabilityWitch.FloatValue>=1.0 || g_cvProbabilityWitch.FloatValue>=GetRandomFloat())
             {
-                CreateTimer(GetRandomFloat(0.1,0.5),Timer_RandomDance,EntIndexToEntRef(entity),TIMER_FLAG_NO_MAPCHANGE);
+                CreateTimer(GetRandomFloat(0.25,0.5),Timer_RandomDance,EntIndexToEntRef(entity),TIMER_FLAG_NO_MAPCHANGE);
             }
         }
     }
@@ -1960,15 +1960,13 @@ stock bool CanInfectedDance(int ent)
         //LogMessage("CanInfectedDance health");
         return false;
     }
-    if (g_bL4D2 && GetEntProp(ent,Prop_Send,"m_iRequestedWound1")>0) // prevent crash. this can be removed if proper bonemerge is solved
+    if (g_bL4D2) // Prevent crash, if bonemerge issue is solved this can be removed
     {
-        //LogMessage("CanInfectedDance m_iRequestedWound1");
-        return false;
-    }
-    if (g_bL4D2 && GetEntProp(ent,Prop_Send,"m_iRequestedWound2")>0) // prevent crash. this can be removed if proper bonemerge is solved
-    {
-        //LogMessage("CanInfectedDance m_iRequestedWound2");
-        return false;
+        int wound1 = GetEntProp(ent,Prop_Send,"m_iRequestedWound1");
+        int wound2 = GetEntProp(ent,Prop_Send,"m_iRequestedWound2");
+        //LogMessage("CanInfectedDance wound1 %d wound2 %d", wound1, wound2);
+        if (wound1>=0 || wound2>=0)
+            return false;
     }
     if (g_bSurvivorsLost) return true;
     if (g_bFinale) return false;
@@ -2160,8 +2158,8 @@ void StopEmote(int ent)
                 g_iModelPrecache = FindStringTable("modelprecache");
             if (g_iModelPrecache!=INVALID_STRING_TABLE && ReadStringTable(g_iModelPrecache,modelIndex,modelPath,PLATFORM_MAX_PATH)>0)
             {
-                SetEntityModel(ent, modelPath);
-                SetEntityModel(ent, FILE_MODEL_FAKE);
+                //SetEntityModel(ent, modelPath);
+                //SetEntityModel(ent, FILE_MODEL_FAKE);
                 SetEntityModel(ent, modelPath);
             }
             SetEntProp(ent, Prop_Send, "m_nBody", body);
