@@ -691,46 +691,55 @@ public void OnClientDisconnect(int client)
 
 public void L4D2_OnHitByVomitJar_Post(int victim, int attacker)
 {
+    //LogMessage("L4D2_OnHitByVomitJar_Post %d", victim);
     StopEmote(victim);
 }
 
 public void L4D2_Infected_HitByVomitJar_Post(int victim, int attacker)
 {
+    //LogMessage("L4D2_Infected_HitByVomitJar_Post %d", victim);
     StopEmote(victim);
 }
 
 public void L4D2_OnStagger_Post(int client, int source)
 {
+    //LogMessage("L4D2_OnStagger_Post %d", client);
     StopEmote(client);
 }
 
 public void L4D_OnMaterializeFromGhost(int client)
 {
+    //LogMessage("L4D_OnMaterializeFromGhost %d", client);
     StopEmote(client);
 }
 
 public void L4D2_OnPlayerFling_Post(int client, int attacker, const float vecDir[3])
 {
+    //LogMessage("L4D2_OnPlayerFling_Post %d", client);
     StopEmote(client);
 }
 
 public void L4D2_OnPounceOrLeapStumble_Post(int victim, int attacker)
 {
+    //LogMessage("L4D2_OnPounceOrLeapStumble_Post %d", victim);
     StopEmote(victim);
 }
 
 public void L4D_OnKnockedDown_Post(int client, int reason)
 {
+    //LogMessage("L4D_OnKnockedDown_Post %d", client);
     StopEmote(client);
 }
 
 public void L4D2_OnThrowImpactedSurvivor_Post(int attacker, int victim)
 {
+    //LogMessage("L4D2_OnThrowImpactedSurvivor_Post %d", attacker);
     StopEmote(victim);
 }
 
 public void L4D_OnFalling(int client)
 {
+    //LogMessage("L4D_OnFalling %d", client);
     StopEmote(client);
 }
 
@@ -738,6 +747,7 @@ void Event_BotReplacePlayer(Event event, const char[] name, bool dontBroadcast)
 {
     int player = GetClientOfUserId(event.GetInt("player"));
     int bot    = GetClientOfUserId(event.GetInt("bot"));
+    //LogMessage("%s %d %d", name, player, bot);
     StopEmote(player);
     StopEmote(bot);
     if (EmotedRecently(player) || EmotedRecently(bot))
@@ -750,22 +760,28 @@ void Event_BotReplacePlayer(Event event, const char[] name, bool dontBroadcast)
 void Event_PlayerVictim(Event event, const char[] name, bool dontBroadcast)
 {
     int victim = GetClientOfUserId(event.GetInt("victim"));
+    //LogMessage("Event_PlayerVictim %d %s", victim, name);
     StopEmote(victim);
 }
 
 void Event_entityid(Event event, const char[] name, bool dontBroadcast)
 {
-    StopEmote(event.GetInt("entityid"));
+    int ent = event.GetInt("entityid");
+    //LogMessage("Event_entityid %d %s", ent, name);
+    StopEmote(ent);
 }
 
 void Event_witchid(Event event, const char[] name, bool dontBroadcast)
 {
-    StopEmote(event.GetInt("witchid"));
+    int ent = event.GetInt("witchid");
+    //LogMessage("Event_witchid %d %s", ent, name);
+    StopEmote(ent);
 }
 
 void Event_PlayerSubject(Event event, const char[] name, bool dontBroadcast)
 {
     int victim = GetClientOfUserId(event.GetInt("subject"));
+    //LogMessage("Event_PlayerSubject %d %s", victim, name);
     StopEmote(victim);
 }
 
@@ -775,16 +791,19 @@ void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
     int victim = event.GetInt("entityid");
     if (victim>0)
     {
+        //LogMessage("Event_PlayerDeath %d %s", victim, name);
         StopEmote(victim);
         return;
     }
     victim = GetClientOfUserId(event.GetInt("userid"));
+    //LogMessage("Event_PlayerDeath %d %s", victim, name);
     StopEmote(victim);
 }
 
 void Event_PlayerUserid(Event event, const char[] name, bool dontBroadcast)
 {
     int victim = GetClientOfUserId(event.GetInt("userid"));
+    //LogMessage("Event_PlayerUserid %d %s", victim, name);
     StopEmote(victim);
 }
 
@@ -794,12 +813,14 @@ void Event_PlayerShoved(Event event, const char[] name, bool dontBroadcast)
     int victim = GetClientOfUserId(event.GetInt("userid"));
     int attacker = GetClientOfUserId(event.GetInt("attacker"));
     if (IsValidClient(victim) && IsValidClient(attacker) && GetClientTeam(victim) == GetClientTeam(attacker)) return;
+    //LogMessage("Event_PlayerShoved %d %s", victim, name);
     StopEmote(victim);
 }
 
 void Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(event.GetInt("userid"));
+    //LogMessage("Event_PlayerTeam %d %s", client, name);
     StopEmote(client);
     if (EmotedRecently(client))
         CreateTimer(0.1, Timer_CheckMoveType, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -862,17 +883,20 @@ void Event_Transition(Event event, const char[] name, bool dontBroadcast)
 {
     OnPluginEnd();
     g_bMapStarted = false;
+    g_bRoundEnd = true;
 }
 public Action L4D1_OnSavingEntities(int info_changelevel, Address Kv)
 {
     OnPluginEnd();
     g_bMapStarted = false;
+    g_bRoundEnd = true;
     return Plugin_Continue;
 }
 public Action L4D2_OnSavingEntities(int info_changelevel)
 {
     OnPluginEnd();
     g_bMapStarted = false;
+    g_bRoundEnd = true;
     return Plugin_Continue;
 }
 
@@ -974,9 +998,16 @@ Action Command_Active_Emotes(int client, int args)
 Action Command_Dance_Infected(int client, int args)
 {
     int entity = -1;
-    int amount;
-    if (args>0 && GetCmdArgIntEx(1,amount)) amount -= 1; // convert 1-based to 0-based Emote ID
-    else amount = PERFORM_RANDOM_DANCE;
+    int amount = PERFORM_RANDOM_DANCE;
+    if (args>0)
+    {
+        char arg[8];
+        GetCmdArg(1,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(1,amount))
+            amount -= 1; // convert 1-based to 0-based Emote I
+    }
     while ( ((entity = FindEntityByClassname(entity, "infected")) != -1) )
         PerformEmote(entity, entity, GetAmount(amount));
     return Plugin_Handled;
@@ -986,9 +1017,16 @@ Action Command_Dance_Infected(int client, int args)
 Action Command_Dance_Witch(int client, int args)
 {
     int entity = -1;
-    int amount;
-    if (args>0 && GetCmdArgIntEx(1,amount)) amount -= 1; // convert 1-based to 0-based Emote ID
-    else amount = PERFORM_RANDOM_DANCE;
+    int amount = PERFORM_RANDOM_DANCE;
+    if (args>0)
+    {
+        char arg[8];
+        GetCmdArg(1,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(1,amount))
+            amount -= 1; // convert 1-based to 0-based Emote I
+    }
     while ( ((entity = FindEntityByClassname(entity, "witch")) != -1) )
         PerformEmote(entity, entity, GetAmount(amount));
     return Plugin_Handled;
@@ -1000,9 +1038,16 @@ Action Command_Dance_Aim(int client, int args)
     if (!IsValidClient(client)) return Plugin_Handled;
     int target = GetClientAimTarget(client,false);
     if (target<=0 || target==client) return Plugin_Handled;
-    int amount;
-    if (args>0 && GetCmdArgIntEx(1,amount)) amount -= 1; // convert 1-based to 0-based Emote ID
-    else amount = PERFORM_RANDOM_DANCE;
+    int amount = PERFORM_RANDOM_DANCE;
+    if (args>0)
+    {
+        char arg[8];
+        GetCmdArg(1,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(1,amount))
+            amount -= 1; // convert 1-based to 0-based Emote I
+    }
     PerformEmote(target, target, GetAmount(amount));
     return Plugin_Handled;
 }
@@ -1014,9 +1059,16 @@ Action Command_Dance_Entity(int client, int args)
     int target;
     if (!GetCmdArgIntEx(1,target)) return Plugin_Handled;
     if (target<=0 || target>MAXENTITIES) return Plugin_Handled;
-    int amount;
-    if (args>1 && GetCmdArgIntEx(2,amount)) amount -= 1; // convert 1-based to 0-based Emote ID
-    else amount = PERFORM_RANDOM_DANCE;
+    int amount = PERFORM_RANDOM_DANCE;
+    if (args>1)
+    {
+        char arg[8];
+        GetCmdArg(2,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(2,amount))
+            amount -= 1; // convert 1-based to 0-based Emote I
+    }
     PerformEmote(target, target, GetAmount(amount));
     return Plugin_Handled;
 }
@@ -1052,11 +1104,18 @@ Action Command_Do_Emotes(int client, int args)
     int amount = PERFORM_RANDOM_ALL;
     if (args>0)
     {
-        amount = GetCmdArgInt(1) - 1; // convert 1-based to 0-based
-        if (amount<PERFORM_RANDOM_ALL || amount>=TOTAL_COUNT)
+        char arg[8];
+        GetCmdArg(1,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(1,amount))
         {
-            CReplyToCommand(client, "Invalid Emote ID. See sm_emoteids for IDs.");
-            return Plugin_Handled;
+            amount -= 1; // convert 1-based to 0-based Emote I
+            if (amount<PERFORM_RANDOM_ALL || amount>=TOTAL_COUNT)
+            {
+                CReplyToCommand(client, "Invalid Emote ID. See sm_emoteids for IDs.");
+                return Plugin_Handled;
+            }
         }
     }
     PerformEmote(client, client, GetAmount(amount));
@@ -1083,11 +1142,18 @@ Action Command_Admin_Emotes(int client, int args)
     int amount = PERFORM_RANDOM_ALL;
     if (args>1)
     {
-        amount = GetCmdArgInt(2) - 1; // convert 1-based to 0-based
-        if (amount<PERFORM_RANDOM_ALL || amount>=TOTAL_COUNT)
+        char arg2[8];
+        GetCmdArg(2,arg2,8);
+        if (strcmp(arg2,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else
         {
-            CReplyToCommand(client, "Usage: <#userid|name> [Emote ID]. See sm_emoteids for IDs.");
-            return Plugin_Handled;
+            amount = GetCmdArgInt(2) - 1; // convert 1-based to 0-based
+            if (amount<PERFORM_RANDOM_ALL || amount>=TOTAL_COUNT)
+            {
+                CReplyToCommand(client, "Usage: <#userid|name> [Emote ID]. See sm_emoteids for IDs.");
+                return Plugin_Handled;
+            }
         }
     }
 
@@ -1165,14 +1231,16 @@ stock int GetFreeDancer()
 {
     int max = GetMaxDancers();
     if (max<=0) return -1;
-    int emote;
+    int ent,emote,skin;
     for (int i=0;i<max;i++)
     {
-        if (g_Dancers[i].ent<=0) return i;
+        ent = g_Dancers[i].ent;
+        if (ent<=0) return i;
         emote = EntRefToEntIndex(g_Dancers[i].emoteRef);
-        if (emote<=0)
+        skin = EntRefToEntIndex(g_Dancers[i].skinRef);
+        if (emote<=0 && skin<=0)
         {
-            StopEmote(g_Dancers[i].ent);
+            if (g_iDancers[ent]==i) StopEmote(ent);
             g_Dancers[i].ent = -1; // Mark as fully free slot
             return i;
         }
@@ -1197,14 +1265,10 @@ stock int GetAmount(int amount)
 {
     switch (amount)
     {
-        case PERFORM_RANDOM_ALL:
-            return GetRandomInt(0,TOTAL_COUNT-1);
-        case PERFORM_RANDOM_EMOTE:
-            return GetRandomInt(0,EMOTES_COUNT-1);
-        case PERFORM_RANDOM_DANCE:
-            return ( EMOTES_COUNT + GetRandomInt(0,DANCES_COUNT-1) );
-        case PERFORM_STOP:
-            return PERFORM_STOP;
+        case PERFORM_RANDOM_ALL:   return GetRandomInt(0,TOTAL_COUNT-1);
+        case PERFORM_RANDOM_EMOTE: return GetRandomInt(0,EMOTES_COUNT-1);
+        case PERFORM_RANDOM_DANCE: return EMOTES_COUNT + GetRandomInt(0,DANCES_COUNT-1);
+        case PERFORM_STOP:         return PERFORM_STOP;
         default:
         {
             if (amount<0 || amount>=TOTAL_COUNT)
@@ -1645,6 +1709,8 @@ Action CreateEmote(int ent, int amount)
         g_Dancers[dancer].emoteRef = EntIndexToEntRef(EmoteEnt);
         g_Dancers[dancer].modelIndex = GetEntProp(ent, Prop_Send, "m_nModelIndex");
         g_Dancers[dancer].movetype = GetEntityMoveType(ent);
+
+        //LogMessage("Create_Emote %d %d", ent, EmoteEnt);
         
         if (g_bL4D2)
         {
@@ -1819,7 +1885,7 @@ Action CreateEmote(int ent, int amount)
         Call_Finish();
     }
     
-    //LogMessage("Create_Emote %d %d", ent, EmoteEnt);
+    ////LogMessage("Create_Emote %d %d", ent, EmoteEnt);
     return Plugin_Handled;
 }
 
@@ -1829,7 +1895,7 @@ Action DancerTraceAttack(int victim, int &attacker, int &inflictor, float &damag
     SDKUnhook(victim,SDKHook_TraceAttack,DancerTraceAttack);
     if (IsEntityDancing(victim))
     {
-        LogMessage("StopEmote DancerTraceAttack");
+        //LogMessage("StopEmote DancerTraceAttack");
         StopEmote(victim);
     }
     return Plugin_Continue;
@@ -1841,7 +1907,7 @@ Action DancerTakeDamage(int victim, int &attacker, int &inflictor, float &damage
     SDKUnhook(victim,SDKHook_OnTakeDamage,DancerTakeDamage);
     if (IsEntityDancing(victim))
     {
-        LogMessage("StopEmote DancerTakeDamage");
+        //LogMessage("StopEmote DancerTakeDamage");
         StopEmote(victim);
     }
     return Plugin_Continue;
@@ -1881,7 +1947,7 @@ stock bool CanInfectedDance(int ent)
 {
     if (GetEntProp(ent,Prop_Data,"m_iHealth")<=0)
     {
-        LogMessage("CanInfectedDance health");
+        //LogMessage("CanInfectedDance health");
         return false;
     }
     if (g_bSurvivorsLost) return true;
@@ -1889,12 +1955,12 @@ stock bool CanInfectedDance(int ent)
     if (g_bL4DD && L4D_IsSurvivalMode()) return false;
     if (0<GetEntPropEnt(ent,Prop_Send,"m_clientLookatTarget")<=MaxClients)
     {
-        LogMessage("CanInfectedDance look");
+        //LogMessage("CanInfectedDance look");
         return false;
     }
     if (GetEntProp(ent,Prop_Send,"m_mobRush")>0)
     {
-        LogMessage("CanInfectedDance m_mobRush");
+        //LogMessage("CanInfectedDance m_mobRush");
         return false;
     }
     return true;
@@ -1902,11 +1968,27 @@ stock bool CanInfectedDance(int ent)
 
 stock bool CanWitchDance(int ent)
 {
-    if (GetEntProp(ent,Prop_Data,"m_iHealth")<=0) return false;
+    if (GetEntProp(ent,Prop_Data,"m_iHealth")<=0)
+    {
+        //LogMessage("CanWitchDance health");
+        return false;
+    }
     if (g_bSurvivorsLost) return true;
-    if (GetEntProp(ent,Prop_Send,"m_mobRush")>0) return false;
-    if (GetEntPropFloat(ent,Prop_Send,"m_rage")>0.0) return false;
-    if (g_bL4D2 && GetEntPropFloat(ent,Prop_Send,"m_wanderrage")>0.0) return false;
+    if (GetEntProp(ent,Prop_Send,"m_mobRush")>0)
+    {
+        //LogMessage("CanWitchDance m_mobRush");
+        return false;
+    }
+    if (GetEntPropFloat(ent,Prop_Send,"m_rage")>0.0)
+    {
+        //LogMessage("CanWitchDance m_rage");
+        return false;
+    }
+    if (g_bL4D2 && GetEntPropFloat(ent,Prop_Send,"m_wanderrage")>0.0)
+    {
+        //LogMessage("CanWitchDance m_wanderrage");
+        return false;
+    }
     return true;
 }
 
@@ -1925,7 +2007,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse)
         float dist_sq = GetVectorLength(pos,true);
         if (dist_sq>=100000.0)
         {
-            //LogMessage("Teleport detected %d dist_sq %f", client, dist_sq);
+            ////LogMessage("Teleport detected %d dist_sq %f", client, dist_sq);
             float ang[3],vel[3];
             GetEntPropVector(client, Prop_Send, "m_angRotation", ang);
             GetEntPropVector(client, Prop_Data, "m_vecVelocity", vel);
@@ -1963,6 +2045,7 @@ void EndAnimation(const char[] output, int caller, int activator, float delay)
 {
     if (caller<=0) return;
     activator = GetEmoteActivator(EntIndexToEntRef(caller));
+    //LogMessage("EndAnimation %d %d", caller, activator);
     StopEmote(activator);
 }
 
@@ -2001,6 +2084,8 @@ void StopEmote(int ent)
     
     int dancer = g_iDancers[ent];
     if (dancer<0) return;
+
+    //LogMessage("StopEmote %d", ent);
 
     int modelIndex = g_Dancers[dancer].modelIndex;
     int EmoteClass = GetEmoteClass(ent);
@@ -2047,6 +2132,7 @@ void StopEmote(int ent)
         float cycle = GetEntPropFloat(ent, Prop_Send, "m_flCycle");
         if (EmoteClass == EMOTECLASS_INFECTED)
         {
+            // infected entities have a lot of network optimization which can make them A-pose. This does not work 100% reliably.
             int body = GetEntProp(ent, Prop_Send, "m_nBody");
             int skin = GetEntProp(ent, Prop_Send, "m_nSkin");
             static char modelPath[PLATFORM_MAX_PATH];
@@ -2083,6 +2169,8 @@ void TerminateEmote(int ent)
     CooldownTimers[ent] = null;
 
     if (g_iDancers[ent]<0) return;
+
+    //LogMessage("TerminateEmote %d", ent);
 
     int EmoteClass = GetEmoteClass(ent);
     bool valid_ent = EmoteClass!=EMOTECLASS_INVALID;
@@ -2283,7 +2371,10 @@ void ThinkInfected(int ent)
         return;
     }
     if (!CanInfectedDance(ent))
+    {
+        //LogMessage("ThinkInfected %d", ent);
         StopEmote(ent);
+    }
 }
 
 void ThinkWitch(int ent)
@@ -2294,7 +2385,10 @@ void ThinkWitch(int ent)
         return;
     }
     if (!CanWitchDance(ent))
+    {
+        //LogMessage("ThinkWitch %d", ent);
         StopEmote(ent);
+    }
 }
 
 void OnPostThinkPost(int client)
@@ -2571,7 +2665,7 @@ Action DancerTouch(int entity, int other)
         || StrEqual(class, "trigger_hurt")
         || StrEqual(class, "trigger_push"))
     {
-        LogMessage("StopEmote DancerTouch");
+        //LogMessage("StopEmote DancerTouch");
         SDKUnhook(entity,SDKHook_StartTouch, DancerTouch);
         SDKUnhook(entity,SDKHook_EndTouch,   DancerTouch);
         SDKUnhook(entity,SDKHook_Touch,      DancerTouch);
@@ -2701,7 +2795,7 @@ float GetModelScale(const char[] model)
             return SCALE_SMOKER;
         if (StrContains(model, "witch", false) != -1)
             return SCALE_WITCH;
-        if (StrContains(model, "tank", false) != -1)
+        if (StrContains(model, "hulk", false) != -1)
             return SCALE_TANK;
         return 1.0;
     }
@@ -2730,8 +2824,6 @@ float GetModelScale(const char[] model)
 // Stop drawing entity, send packets to all clients, then kill 0.1 seconds later.
 stock void CleanRemoveEntity(const int entity)
 {
-    //AcceptEntityInput(entity, "ClearParent");
-    //TeleportEntity(entity,{0.0,0.0,0.0},NULL_VECTOR,NULL_VECTOR);
     SetEntProp(entity,Prop_Send,"m_fEffects",
         GetEntProp(entity,Prop_Send,"m_fEffects")|EF_NODRAW|EF_NOSHADOW|EF_NORECEIVESHADOW);
     SetEntityRenderMode(entity, view_as<RenderMode>(RENDER_NONE));
