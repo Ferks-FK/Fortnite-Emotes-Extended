@@ -25,9 +25,6 @@ jobs:
           mkdir -p ../plugins
           spcomp -i include -o ../plugins/fnemotes_near.smx fnemotes_near.sp
 
-      - name: Generate L4D1 model
-        run: python3 tools/make_l4d1_model.py
-
       - name: Create packages
         run: |
           set -euo pipefail
