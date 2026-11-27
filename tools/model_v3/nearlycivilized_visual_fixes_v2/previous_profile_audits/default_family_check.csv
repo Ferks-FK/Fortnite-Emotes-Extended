@@ -1,0 +1,4 @@
+model,source,native_shoulder_width,native_head_foot_Z,max_local_body_translation_diff_from_carrier
+survivor_biker,decomp/survivors/survivor_biker/survivor_biker_anims/Biker.smd,14.239883706939912,64.34005065932986,0.014824587683976896
+survivor_coach,decomp/survivors/survivor_coach/survivor_coach_anims/coach.smd,13.533902966469286,64.33998622485612,0.014824587683976896
+survivor_manager,decomp/survivors/survivor_manager/survivor_manager_anims/Manager.smd,13.533904480745978,64.3400358357429,0.014824587683976896

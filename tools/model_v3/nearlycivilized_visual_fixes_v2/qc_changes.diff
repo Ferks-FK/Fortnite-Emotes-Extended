@@ -1,0 +1,11 @@
+--- previous working QC
++++ refined QC
+@@ -1344,7 +1344,7 @@
+     fps 30
+     weightlist "infected_rig_only"
+ }
+-$animation "rig_jockey_a" "rig_pose_jockey_pitch45.smd" {
++$animation "rig_jockey_a" "rig_pose_jockey_head_neutral.smd" {
+     fps 30
+     weightlist "infected_rig_only"
+ }
