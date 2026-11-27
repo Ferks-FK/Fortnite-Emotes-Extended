@@ -356,6 +356,10 @@ public void OnPluginStart()
     HookEvent("player_now_it",              Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_blind",               Event_PlayerUserid,     EventHookMode_Pre);
     HookEvent("player_ledge_grab",          Event_PlayerUserid,     EventHookMode_Pre);
+    // if (g_bL4D2)
+    // {
+    // HookEvent("charger_charge_start",       Event_PlayerUserid,     EventHookMode_Pre);
+    // }
     
     HookEvent("player_team",                Event_PlayerTeam,       EventHookMode_Pre);
     HookEvent("player_bot_replace",         Event_BotReplacePlayer, EventHookMode_Pre);
@@ -384,6 +388,19 @@ public void OnPluginStart()
     g_cvFastCull =      CreateConVar("sm_emotes_fastcull",             "1",   "Fastcull bonemerge. Shadows tend to cut off more but don't jump around sporadically.", FCVAR_NOTIFY);
     g_cvTeleportFix =   CreateConVar("sm_emotes_teleportfix",          "1",   "(Players) Stop emote if player teleports.", FCVAR_NOTIFY);
     g_cvSafety =        CreateConVar("sm_emotes_crashguard",           "1",   "Prevents entities from being created close to MaxEntities.", FCVAR_NOTIFY);
+    g_cvEmotesSounds  = CreateConVar("sm_emotes_sounds",              "2",    "Sounds for 1:player,2:player+witch,3:all. Will activate on next map.", FCVAR_NOTIFY);
+    g_cvSoundVolume  =  CreateConVar("sm_emotes_soundvol",            "1.0",  "Sound volume.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvSoundLevel  =   CreateConVar("sm_emotes_soundlvl",            "90",   "Sound level in dB [0,180].", FCVAR_NOTIFY, true, 0.0, true, 180.0);
+    g_cvCooldown      = CreateConVar("sm_emotes_cooldown",            "1.0",  "Cooldown for emotes in seconds. -1 or 0 = no cooldown.", FCVAR_NOTIFY);
+    g_cvFlagEmotesMenu= CreateConVar("sm_emotes_admin_flag_menu",     "",     "admin flag for emotes (empty for all players)");
+    g_cvFlagDancesMenu= CreateConVar("sm_dances_admin_flag_menu",     "",     "admin flag for dances (empty for all players)");
+    g_cvHideWeapons   = CreateConVar("sm_emotes_hide_weapons",        "1",    "(Players) Hide weapons when dancing", FCVAR_NOTIFY);
+    g_cvHidePlayers   = CreateConVar("sm_emotes_hide_enemies",        "0",    "(Players) Hide enemy players when dancing", FCVAR_NOTIFY);
+    g_cvTeleportBack  = CreateConVar("sm_emotes_teleportonend",       "1",    "(Players) Teleport back to position where dance started.", FCVAR_NOTIFY);
+    g_cvSpeed         = CreateConVar("sm_emotes_speed",               "0.84", "Sets the playback speed of the animation.", FCVAR_PROTECTED);
+    g_cvBlockNonHumanoid = CreateConVar("sm_emotes_block_nonhumanoid", "1",   "L4D2: block emotes for Spitter, Jockey and Charger (their skeletons can't play the dances).", FCVAR_NOTIFY);
+    g_cvFastCull =      CreateConVar("sm_emotes_fastcull",             "1",   "Fastcull bonemerge. Shadows tend to cut off more but don't jump around sporadically.", FCVAR_NOTIFY);
+    g_cvTeleportFix =   CreateConVar("sm_emotes_teleportfix",          "1",   "Stop emote when player teleport is detected.", FCVAR_NOTIFY);
 
     g_cvProbabilityWitch = CreateConVar("sm_emotes_pwitch", "0.25",
     "Probability for Witches to do a random dance on spawn. 0 to disable.",
@@ -492,6 +509,13 @@ public void OnAllPluginsLoaded()
     // ignore "fake" VScript finales
     int finale = FindEntityByClassname(-1, "trigger_finale");
     g_bFinale = finale>0 && IsValidEntity(finale);    
+    g_bFinale = L4D_IsFinaleActive();
+    if (g_bFinale)
+    {
+        // ignore "fake" VScript finales
+        int entity = FindEntityByClassname(-1, "trigger_finale");
+        g_bFinale = entity>0 && IsValidEntity(entity);
+    }
 }
 
 public void OnLibraryAdded(const char[] name)
@@ -795,6 +819,7 @@ void Event_PlayerShoved(Event event, const char[] name, bool dontBroadcast)
     int attacker = GetClientOfUserId(event.GetInt("attacker"));
     if (IsValidClient(victim) && IsValidClient(attacker) && GetClientTeam(victim) == GetClientTeam(attacker))
         return;
+    if (IsValidClient(victim) && IsValidClient(attacker) && GetClientTeam(victim) == GetClientTeam(attacker)) return;
     //LogMessage("Event_PlayerShoved %d %s", victim, name);
     StopEmote(victim);
 }
@@ -809,6 +834,14 @@ void Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
 }
 
 void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
+{
+    g_bSurvivorsLost = false;
+    g_bFinale = false;
+    g_bRoundEnd = false;
+    OnPluginEnd();
+}
+
+void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
     g_bSurvivorsLost = false;
     g_bFinale = false;
@@ -974,6 +1007,147 @@ Action Command_Active_Emotes(int client, int args)
     }
     ReplyToCommand(client,"[SM] Players+Commons+Witches=Total | %d+%d+%d=%d",
         num_player,num_infected,num_witch,total);
+{
+    ReplyToCommand(client,"--- fnemotes_near version %s Emote IDs ---", PLUGIN_VERSION);
+    ReplyToCommand(client,"%d -> random", PERFORM_RANDOM_ALL+1);
+    ReplyToCommand(client,"%d -> random emote", PERFORM_RANDOM_EMOTE+1);
+    ReplyToCommand(client,"%d -> random dance", PERFORM_RANDOM_DANCE+1);
+    ReplyToCommand(client,"%d -> stop", PERFORM_STOP+1);
+    for (int i = 0; i < TOTAL_COUNT; i++)
+    {
+        if (i<EMOTES_COUNT)
+            ReplyToCommand(client,"%d -> %s (emote)", i+1, g_Emotes[i].name);
+        else
+            ReplyToCommand(client,"%d -> %s (dance)", i+1, g_Dances[i-EMOTES_COUNT].name);
+    }
+    return Plugin_Handled;
+}
+
+// Count number of active dancing entities
+Action Command_Active_Emotes(int client, int args)
+{
+    int total, num_player, num_infected, num_witch;
+    int emote;
+    for (int i=0;i<MAXDANCERS;i++)
+    {
+        if (g_Dancers[i].ent<=0) continue;
+        emote = EntRefToEntIndex(g_Dancers[i].emoteRef);
+        if (emote<=0) continue;
+        total += 1;
+        switch (GetEmoteClass(g_Dancers[i].ent))
+        {
+            case EMOTECLASS_PLAYER:   num_player   += 1;
+            case EMOTECLASS_INFECTED: num_infected += 1;
+            case EMOTECLASS_WITCH:    num_witch    += 1;
+        }
+    }
+    ReplyToCommand(client,"[SM] Players+Commons+Witches=Total | %d+%d+%d=%d",
+        num_player,num_infected,num_witch,total);
+    return Plugin_Handled;
+}
+
+// Command all non-busy infected to dance
+Action Command_Dance_Infected(int client, int args)
+{
+    int entity = -1;
+    int amount = PERFORM_RANDOM_DANCE;
+    if (args>0)
+    {
+        char arg[8];
+        GetCmdArg(1,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(1,amount))
+            amount -= 1; // convert 1-based to 0-based Emote I
+    }
+    while ( ((entity = FindEntityByClassname(entity, "infected")) != -1) )
+        PerformEmote(entity, entity, GetAmount(amount));
+    return Plugin_Handled;
+}
+
+// Command all non-busy witches to dance
+Action Command_Dance_Witch(int client, int args)
+{
+    int entity = -1;
+    int amount = PERFORM_RANDOM_DANCE;
+    if (args>0)
+    {
+        char arg[8];
+        GetCmdArg(1,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(1,amount))
+            amount -= 1; // convert 1-based to 0-based Emote I
+    }
+    while ( ((entity = FindEntityByClassname(entity, "witch")) != -1) )
+        PerformEmote(entity, entity, GetAmount(amount));
+    return Plugin_Handled;
+}
+
+// Command non-busy aim target to dance
+Action Command_Dance_Aim(int client, int args)
+{
+    if (!IsValidClient(client)) return Plugin_Handled;
+    int target = GetClientAimTarget(client,false);
+    if (target<=0 || target==client) return Plugin_Handled;
+    int amount = PERFORM_RANDOM_DANCE;
+    if (args>0)
+    {
+        char arg[8];
+        GetCmdArg(1,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(1,amount))
+            amount -= 1; // convert 1-based to 0-based Emote I
+    }
+    PerformEmote(target, target, GetAmount(amount));
+    return Plugin_Handled;
+}
+
+// Command non-busy entity to dance
+Action Command_Dance_Entity(int client, int args)
+{
+    if (args<=0) return Plugin_Handled;
+    int target;
+    if (!GetCmdArgIntEx(1,target)) return Plugin_Handled;
+    if (target<=0 || target>MAXENTITIES) return Plugin_Handled;
+    int amount = PERFORM_RANDOM_DANCE;
+    if (args>1)
+    {
+        char arg[8];
+        GetCmdArg(2,arg,8);
+        if (strcmp(arg,"stop",false)==0)
+            amount = PERFORM_STOP;
+        else if (GetCmdArgIntEx(2,amount))
+            amount -= 1; // convert 1-based to 0-based Emote I
+    }
+    PerformEmote(target, target, GetAmount(amount));
+    return Plugin_Handled;
+}
+
+Action Command_Menu(int client, int args)
+{
+    if (!IsValidClient(client) || IsFakeClient(client))
+        return Plugin_Handled;
+    Menu_Dance(client);
+    return Plugin_Handled;
+}
+
+// Force all players to dance. If args>0, include common infected and witches.
+Action Command_Force_Emote(int client, int args)
+{
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (!IsValidClient(i)) continue;
+        if (!IsPlayerAlive(i)) continue;
+        if (!CanPlayerDance(i,view_as<L4DTeam>(GetClientTeam(i)))) continue; 
+        RandomDance(i);
+    }
+    if (args>0)
+    {
+        Command_Dance_Infected(client,0);
+        Command_Dance_Witch(client,0);
+    }
     return Plugin_Handled;
 }
 
@@ -1109,6 +1283,10 @@ Action Command_Do_Emotes(int client, int args)
     if (args>0)
     {
         char arg[8];
+    int amount = PERFORM_RANDOM_ALL;
+    if (args>0)
+    {
+        char arg[8];
         GetCmdArg(1,arg,8);
         if (strcmp(arg,"stop",false)==0)
             amount = PERFORM_STOP;
@@ -1186,6 +1364,7 @@ Action Command_Admin_Emotes(int client, int args)
 void PerformEmote(int client, int target, int amount)
 {
     if (amount<0) // stop emote
+    if (amount==-1) // stop emote
     {
         StopEmote(target);
         return;
@@ -1198,6 +1377,7 @@ void PerformEmote(int client, int target, int amount)
     }
 
     CreateEmote(target,amount,client);
+    CreateEmote(target,amount);
 }
 
 // ============================================================
@@ -1212,6 +1392,65 @@ stock bool EmotedRecently(int client)
 }
 
 // Tell CreateEmote no free dancers are available this frame.
+stock void SetFrameNoDancers(bool state)
+{
+    g_bFrameNoDancers = state;
+    if (state) RequestFrame(SetFrameNoDancers,false);
+}
+
+stock void StopDancer(int i)
+{
+    if (i<0 || i>=MAXDANCERS) return;
+    StopEmote(g_Dancers[i].ent);
+}
+
+stock int GetMaxDancers()
+{
+    int max = g_cvMaxDancers.IntValue;
+    if (max<0) return 0;
+    if (max>MAXDANCERS) return MAXDANCERS;
+    return max;
+}
+
+// Find free dance index. Respects dancers that are still cleaning up.
+stock int GetFreeDancer()
+{
+    int max = GetMaxDancers();
+    if (max<=0) return -1;
+    int ent,emote,skin;
+    for (int i=0;i<max;i++)
+    {
+        ent = g_Dancers[i].ent;
+        if (ent<=0) return i;
+        emote = EntRefToEntIndex(g_Dancers[i].emoteRef);
+        skin = EntRefToEntIndex(g_Dancers[i].skinRef);
+        if (emote<=0 && skin<=0)
+        {
+            if (g_iDancers[ent]==i) StopEmote(ent);
+            g_Dancers[i].ent = -1; // Mark as fully free slot
+            return i;
+        }
+    }
+    SetFrameNoDancers(true);
+    return -1;
+}
+
+stock void GetMapBounds()
+{
+    if (!IsValidEntity(0))
+    {
+        RequestFrame(GetMapBounds);
+        return;
+    }
+    GetEntPropVector(0,Prop_Data,"m_WorldMaxs",vOOB);
+    AddVectors(vOOB,{100.0,100.0,100.0},vOOB);
+}
+
+// Get random amount index (0-based)
+stock int GetAmount(int amount)
+{
+}
+
 stock void SetFrameNoDancers(bool state)
 {
     g_bFrameNoDancers = state;
@@ -1498,6 +1737,7 @@ int MenuHandlerDances(Menu menu, MenuAction action, int client, int param2)
 
 // Make ent dance using 0-based EmoteID amount. client is who ordered CreateEmote
 Action CreateEmote(int ent, int amount, int client = 0)
+Action CreateEmote(int ent, int amount)
 {
     if (!g_bMapStarted)
     {
@@ -1529,12 +1769,14 @@ Action CreateEmote(int ent, int amount, int client = 0)
         {
             //LogMessage("g_bFrameNoDancers");
             if (IsClient && ent==client) CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
+            if (IsClient) CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
             return Plugin_Handled;
         }
         if (g_cvCooldown.FloatValue>0.0 && CooldownTimers[ent])
         {
             //LogMessage("CooldownTimers");
             if (IsClient && ent==client) CReplyToCommand(ent, "%t", "COOLDOWN_EMOTES");
+            if (IsClient) CReplyToCommand(ent, "%t", "COOLDOWN_EMOTES");
             return Plugin_Handled;
         }
     }
@@ -1546,6 +1788,7 @@ Action CreateEmote(int ent, int amount, int client = 0)
     {
         //LogMessage("Bad intro");
         if (IsClient && ent==client) CReplyToCommand(ent, "%t", "AMIN_1_INVALID");
+        if (IsClient) CReplyToCommand(ent, "%t", "AMIN_1_INVALID");
         return Plugin_Handled;
     }
 
@@ -1559,6 +1802,7 @@ Action CreateEmote(int ent, int amount, int client = 0)
             if (!IsPlayerAlive(ent))
             {
                 if (IsClient && ent==client) CReplyToCommand(ent, "%t", "MUST_BE_ALIVE");
+                CReplyToCommand(ent, "%t", "MUST_BE_ALIVE");
                 return Plugin_Handled;
             }
 
@@ -1579,12 +1823,30 @@ Action CreateEmote(int ent, int amount, int client = 0)
             if (IsThrowingRock(ent))
             {
                 if (IsClient && ent==client) CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
+                if (IsClient) CReplyToCommand(ent, "%t", "STAY_ON_GROUND");
+                return Plugin_Handled;
+            }
+
+            team = view_as<L4DTeam>(GetClientTeam(ent));
+
+            // 4 = Spitter, 5 = Jockey, 6 = Charger
+            if (g_bL4D2 && g_cvBlockNonHumanoid.BoolValue && team == L4DTeam_Infected
+                && 4 <= GetEntProp(ent, Prop_Send, "m_zombieClass") <= 6)
+            {
+                CReplyToCommand(ent, "%t", "CLASS_CANNOT_EMOTE");
+                return Plugin_Handled;
+            }
+
+            if (IsThrowingRock(ent))
+            {
+                CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
                 return Plugin_Handled;
             }
 
             if (!CanPlayerDance(ent,team))
             {
                 if (IsClient && ent==client) CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
+                CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
                 return Plugin_Handled;
             }
 
@@ -1643,6 +1905,7 @@ Action CreateEmote(int ent, int amount, int client = 0)
         if (dancer<0)
         {
             if (IsClient && ent==client) CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
+            if (IsClient) CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
             //LogMessage("GetFreeDancer failed");
             return Plugin_Handled;
         }
@@ -1655,6 +1918,7 @@ Action CreateEmote(int ent, int amount, int client = 0)
         {
             //LogMessage("Movetype/carryable failed");
             if (IsClient && ent==client) CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
+            if (IsClient) CReplyToCommand(ent, "%t", "CANNOT_USE_NOW");
             return Plugin_Handled;
         }
     }
@@ -1725,6 +1989,12 @@ Action CreateEmote(int ent, int amount, int client = 0)
         g_Dancers[dancer].movetype = GetEntityMoveType(ent);
 
         //LogMessage("Create_Emote %d %d", ent, EmoteEnt);
+        
+        if (g_bL4D2)
+        {
+            float flScale = GetModelScale(model);
+            if (flScale != 1.0) SetEntPropFloat(EmoteEnt,Prop_Send,"m_flModelScale",flScale);
+        }
 
         float vec[3], ang[3];
         if (IsClient)
@@ -1776,12 +2046,45 @@ Action CreateEmote(int ent, int amount, int client = 0)
         SetEntPropFloat(EmoteEnt, Prop_Send, "m_flPoseParameter", pose_x,   1); // body_profile_x
         SetEntPropFloat(EmoteEnt, Prop_Send, "m_flPoseParameter", pose_y,   2); // body_profile_y
 
+        if (IsClient)
+        {
+            // Otherwise, starting the emote while moving keeps the camera bobbing.
+            TeleportEntity(ent, NULL_VECTOR, NULL_VECTOR, {0.0,0.0,0.0});
+            
+            TeleportEntity(EmoteEnt, vec, ang, NULL_VECTOR);
+            SetVariantString("!activator");
+            AcceptEntityInput(ent, "SetParent", EmoteEnt);
+            TeleportEntity(ent,{0.0,0.0,0.0},{0.0,0.0,0.0},{0.0,0.0,0.0});
+            SetCam(ent,team);
+        }
+        else
+        {
+            TeleportEntity(EmoteEnt,vOOB,{0.0,0.0,0.0},{0.0,0.0,0.0});
+            
+            if (EmoteClass==EMOTECLASS_INFECTED)
+                SDKHook(ent,SDKHook_Think,ThinkInfected);
+            else
+                SDKHook(ent,SDKHook_Think,ThinkWitch);
+            
+            if (g_iModelIndexFake)
+                SetEntProp(ent, Prop_Send, "m_nModelIndex", g_iModelIndexFake);
+            else
+                SetEntityModel(ent,FILE_MODEL_FAKE);
+            
+            SetVariantString("!activator");
+            AcceptEntityInput(EmoteEnt, "SetParent", ent);
+            TeleportEntity(EmoteEnt,{0.0,0.0,0.0},{0.0,0.0,0.0},{0.0,0.0,0.0});
+        }
+
         if (IsClient && g_cvHidePlayers.BoolValue)
         {
             for (int i = 1; i <= MaxClients; i++)
             {
                 if ( !g_bHooked[i] && IsClientInGame(i) && IsPlayerAlive(i)
                     && GetClientTeam(i) != GetClientTeam(ent) )
+                if (IsClientInGame(i) && IsPlayerAlive(i)
+                    && GetClientTeam(i) != GetClientTeam(ent)
+                    && !g_bHooked[i])
                 {
                     SDKHook(i, SDKHook_SetTransmit, SetTransmit);
                     g_bHooked[i] = true;
@@ -1812,6 +2115,9 @@ Action CreateEmote(int ent, int amount, int client = 0)
     {
         effects = GetEntProp(ent,Prop_Send,"m_fEffects");
         effects |= EF_BONEMERGE|EF_PARENT_ANIMATES|EF_BONEMERGE_FASTCULL; // need fastcull here or camera will shake
+        effects |= EF_BONEMERGE|EF_PARENT_ANIMATES;
+        if (g_cvFastCull.BoolValue) effects |= EF_BONEMERGE_FASTCULL;
+        else                        effects &= ~EF_BONEMERGE_FASTCULL;
         SetEntProp(ent,Prop_Send,"m_fEffects",effects);
     }
 
@@ -1990,6 +2296,7 @@ stock bool CanInfectedDance(int ent)
     if (g_bL4DD && L4D_IsSurvivalMode()) return false;
     //if (0<GetEntPropEnt(ent,Prop_Send,"m_clientLookatTarget")<=MaxClients)
     if (GetEntProp(ent,Prop_Send,"m_clientLookatTarget")>0)
+    if (0<GetEntPropEnt(ent,Prop_Send,"m_clientLookatTarget")<=MaxClients)
     {
         //LogMessage("CanInfectedDance look");
         return false;
@@ -2136,6 +2443,19 @@ void StopEmote(int ent)
     int iEmoteEnt = EntRefToEntIndex(g_Dancers[dancer].emoteRef);
     if (iEmoteEnt>0 && IsValidEntity(iEmoteEnt))
     {
+
+    //LogMessage("StopEmote %d", ent);
+
+    int modelIndex = g_Dancers[dancer].modelIndex;
+    int EmoteClass = GetEmoteClass(ent);
+    bool valid_ent = EmoteClass!=EMOTECLASS_INVALID;
+    bool valid_client = EmoteClass==EMOTECLASS_PLAYER;
+
+    int iEmoteEnt = EntRefToEntIndex(g_Dancers[dancer].emoteRef);
+    if (iEmoteEnt>0 && IsValidEntity(iEmoteEnt))
+    {
+        // https://forums.alliedmods.net/showthread.php?t=212872
+        if (g_bL4D2) SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
         if (valid_client) AcceptEntityInput(ent, "ClearParent");
         CleanRemoveEntity(iEmoteEnt);
         if (valid_client && g_cvTeleportBack.BoolValue)
@@ -2179,6 +2499,11 @@ void StopEmote(int ent)
                 g_iModelPrecache = FindStringTable("modelprecache");
             if (g_iModelPrecache!=INVALID_STRING_TABLE && ReadStringTable(g_iModelPrecache,modelIndex,modelPath,PLATFORM_MAX_PATH)>0)
                 SetEntityModel(ent, modelPath);
+            {
+                //SetEntityModel(ent, modelPath);
+                //SetEntityModel(ent, FILE_MODEL_FAKE);
+                SetEntityModel(ent, modelPath);
+            }
             SetEntProp(ent, Prop_Send, "m_nBody", body);
             SetEntProp(ent, Prop_Send, "m_nSkin", skin);
         }
@@ -2214,6 +2539,8 @@ void TerminateEmote(int ent)
     int iEmoteEnt = EntRefToEntIndex(g_Dancers[g_iDancers[ent]].emoteRef);
     if (iEmoteEnt>0 && IsValidEntity(iEmoteEnt))
     {
+        // https://forums.alliedmods.net/showthread.php?t=212872
+        if (g_bL4D2) SetEntPropFloat(iEmoteEnt, Prop_Send, "m_flModelScale", 1.0);
         if (valid_client) AcceptEntityInput(ent, "ClearParent");
         CleanRemoveEntity(iEmoteEnt);
     }
@@ -2230,6 +2557,7 @@ stock void CreateEmoteSound(int ent, int EmoteClass, bool ghost, const char[] so
 {
     g_Dancers[g_iDancers[ent]].sound = false;
     if (!g_cvSounds.BoolValue) return;
+    if (!g_cvEmotesSounds.BoolValue) return;
     if (g_cvSoundVolume.FloatValue<=0.0) return;
     if (g_cvSoundLevel.IntValue<=0.0) return;
     if (!g_bSoundsCached) return;
@@ -2243,6 +2571,51 @@ stock void CreateEmoteSound(int ent, int EmoteClass, bool ghost, const char[] so
         case EMOTECLASS_INFECTED:
         {
             if (g_cvSounds.IntValue<3) return;
+        }
+    }
+    static char fullSoundPath[PLATFORM_MAX_PATH];
+    GetEmoteRandomSoundPath(sound,fullSoundPath,PLATFORM_MAX_PATH);
+    if (fullSoundPath[0]==0) return;
+    // If ghost, emit sound selectively.
+    if (ghost)
+    {
+        for (int i = 1; i <= MaxClients; i++)
+        {
+            if (!IsClientInGame(i)) continue;
+            if (view_as<L4DTeam>(GetClientTeam(i))==L4DTeam_Survivor) continue;
+            EmitSoundToClient(i,fullSoundPath, ent, SNDCHAN_AUTO, g_cvSoundLevel.IntValue, SND_STOPLOOPING, g_cvSoundVolume.FloatValue);
+        }
+    }
+    else
+    {
+        EmitSoundToAll(fullSoundPath, ent, SNDCHAN_AUTO, g_cvSoundLevel.IntValue, SND_STOPLOOPING, g_cvSoundVolume.FloatValue);
+    }
+    g_Dancers[g_iDancers[ent]].sound = true;
+}
+
+// For given sound label with possibly multiple sounds separated by commas, randomly select one.
+stock void GetEmoteRandomSoundPath(const char[] sound, char[] buffer, int maxlen)
+{
+    if (sound[0]==0)
+    {
+        buffer[0]=0;
+        return;
+    }
+    static char soundNameBuffer[ENTRY_SIZE];
+    if (StrContains(sound, ",") != -1)
+    {
+        static char sounds[8][ENTRY_SIZE];
+        int count = ExplodeString(sound, ",", sounds, sizeof(sounds), sizeof(sounds[]));
+        strcopy(soundNameBuffer, ENTRY_SIZE, sounds[GetRandomInt(0, count - 1)]);
+    }
+    {
+        case EMOTECLASS_WITCH:
+        {
+            if (g_cvEmotesSounds.IntValue<2) return;
+        }
+        case EMOTECLASS_INFECTED:
+        {
+            if (g_cvEmotesSounds.IntValue<3) return;
         }
     }
     static char fullSoundPath[PLATFORM_MAX_PATH];
@@ -2734,6 +3107,18 @@ stock void PopulateEmoteData(int amount, EmoteData data)
 
 stock bool IsEntityDancing(const int ent)
 {
+
+// Fills EmoteData, don't use this unless you need the whole enum struct.
+stock void PopulateEmoteData(int amount, EmoteData data)
+{
+    if (amount>=EMOTES_COUNT)
+        data = g_Dances[amount-EMOTES_COUNT];
+    else
+        data = g_Emotes[amount];
+}
+
+stock bool IsEntityDancing(const int ent)
+{
     if (ent<=0 || ent>MAXENTITIES) return false;
     return g_iDancers[ent]>=0 && g_Dancers[g_iDancers[ent]].ent==ent;
 }
@@ -2774,6 +3159,11 @@ stock bool EmoteValidGround(int ent)
     //return true;
     return GetEntityFlags(ent)&FL_ONGROUND;
     //return GetEntPropEnt(ent, Prop_Send, "m_hGroundEntity") == 0;
+stock bool EmoteValidGround(int client)
+{
+    //return true;
+    return GetEntityFlags(client)&FL_ONGROUND;
+    //return GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") == 0;
 }
 
 void AddTranslatedMenuItem(Menu menu, const char[] opt, const char[] phrase, int client)
@@ -2816,6 +3206,7 @@ stock bool IsValidClient(int client, bool replaycheck = true)
 
 // infected_rig body_profile_x body_profile_y
 stock void FillPoseParams(const char[] model, float &pose_rig, float &pose_x, float &pose_y)
+float GetModelScale(const char[] model)
 {
     if (StrContains(model, "infected", false) != -1)
     {
@@ -2866,6 +3257,36 @@ stock void FillPoseParams(const char[] model, float &pose_rig, float &pose_x, fl
         if (StrContains(model, "producer", false) != -1) // Rochelle
             {  pose_x = 1.0/3.0; pose_y=1.0/3.0;  return;    }
     }
+            return SCALE_COMMON;
+        if (StrContains(model, "hunter", false) != -1)
+            return SCALE_HUNTER;
+        if (StrContains(model, "boome", false) != -1)
+            return SCALE_BOOMER;
+        if (StrContains(model, "smoker", false) != -1)
+            return SCALE_SMOKER;
+        if (StrContains(model, "witch", false) != -1)
+            return SCALE_WITCH;
+        if (StrContains(model, "hulk", false) != -1)
+            return SCALE_TANK;
+        return 1.0;
+    }
+    if (StrContains(model, "manager", false) != -1)       // Louis
+        return SCALE_LOUIS;
+    if (StrContains(model, "coach", false) != -1)       // Coach
+        return SCALE_COACH;
+    if (StrContains(model, "mechanic", false) != -1)    // Ellis 
+        return SCALE_ELLIS;
+    if (StrContains(model, "biker", false) != -1)       // Francis
+        return SCALE_FRANCIS;
+    if (StrContains(model, "teenangst", false) != -1)   // Zoey
+        return SCALE_ZOEY;
+    if (StrContains(model, "gambler", false) != -1)       // Nick
+        return SCALE_NICK;
+    if (StrContains(model, "namvet", false) != -1)       // Bill
+        return SCALE_BILL;
+    if (StrContains(model, "producer", false) != -1)   // Rochelle
+        return SCALE_ROCHELLE;
+    return 1.0;
 }
 
 // Entity,Input,Parameter,Delay,OnlyOnce
