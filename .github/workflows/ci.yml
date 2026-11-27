@@ -23,6 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ../plugins
+          test -f include/fnemotes.inc
           spcomp -i include -o ../plugins/fnemotes_near.smx fnemotes_near.sp
 
       - name: Create packages
