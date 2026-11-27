@@ -40,8 +40,8 @@ jobs:
             cp -R sound "$pkg/"
           done
           for ext in mdl vvd dx90.vtx; do
-            cp "models/player/kodua/fnemotes_nearlycivilized_v2.$ext"      /tmp/package/l4d2/models/player/kodua/
-            cp "models/player/kodua/fnemotes_nearlycivilized_v2_l4d1.$ext" /tmp/package/l4d1/models/player/kodua/
+            cp "models/player/kodua/fnemotes_nearlycivilized_v3_l4d2.$ext"      /tmp/package/l4d2/models/player/kodua/
+            cp "models/player/kodua/fnemotes_nearlycivilized_v3_l4d1.$ext" /tmp/package/l4d1/models/player/kodua/
           done
 
       - name: Upload build archive for test runners
